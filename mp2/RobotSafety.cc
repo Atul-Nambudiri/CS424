@@ -11,7 +11,7 @@ void RobotSafety::stopAndPlaySong(pthread_mutex_t * stream_mutex, Create * robot
         pthread_mutex_unlock(stream_mutex);
 }
 
-void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed, int speed_diff) {
+void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed, int speed_diff) { //This is never called
     pthread_mutex_lock(stream_mutex);
     robot->sendDriveDirectCommand(speed + speed_diff, speed);	
 	//robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  

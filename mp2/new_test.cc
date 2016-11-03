@@ -17,11 +17,12 @@ using namespace std;
 
 pthread_mutex_t stream_mutex;
 pthread_cond_t condition_wait;
-int speed = 40;
+int speed = 50;
 int speed_diff = 70;
-int extra_angle = 20;
+int original_extra_angle = 20;
+int current_extra_angle = original_extra_angle;
 bool turning = false;
-int correctionCount = 6000;
+int correctionCount = 3000;
 int current_wall_signal = 0;
 int prev_wall_signal = 0;
 bool stopped = false;
@@ -53,7 +54,7 @@ void correctLeft(Create& robot, float multiplier) {
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   
   //Move past parralel so that the robot is facing out
-  robot.sendWaitAngleCommand((short) (extra_angle * multiplier));
+  robot.sendWaitAngleCommand((short) (current_extra_angle * multiplier));
   setTurning(false);
   robot.sendDriveDirectCommand(speed + speed_diff, speed);
   cout << "Corrected" << endl;
@@ -74,7 +75,7 @@ void turnLeft(Create& robot, RobotVision& vision) {
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   
   //Move past parralel so that the robot is facing out
-  robot.sendWaitAngleCommand(extra_angle);
+  robot.sendWaitAngleCommand((short) (current_extra_angle * 0.7));
   vision.updateDirectionVector();
   robot.sendDriveDirectCommand(speed + speed_diff, speed);
   cout << "Done turning left" << endl;
@@ -93,9 +94,9 @@ void * mainThread(void * args) {
     bump = robot.bumpRight() || robot.bumpLeft();
   }
 
-  robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
+  robot.sendDriveCommand(-100, Create::DRIVE_STRAIGHT);
 
-  this_thread::sleep_for(chrono::milliseconds(200));    
+  this_thread::sleep_for(chrono::milliseconds(600));    
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);      
 
   moveCounterClockwise(robot);
@@ -103,7 +104,7 @@ void * mainThread(void * args) {
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
 
   //Move past parralel so that the robot is facing out
-  robot.sendWaitAngleCommand(extra_angle);
+  robot.sendWaitAngleCommand(current_extra_angle);
   robot.sendDriveCommand (0, Create::DRIVE_STRAIGHT);
 
   robot.sendDriveDirectCommand(speed + speed_diff, speed);
@@ -111,7 +112,6 @@ void * mainThread(void * args) {
   int loop_counter = 0;
   RobotVision vision;
   pthread_mutex_unlock(&stream_mutex);
-  bool correctedLastIteration = false;
   while (!local_play) { 
       pthread_mutex_lock(&stream_mutex);
       //Need to turn left
@@ -122,18 +122,28 @@ void * mainThread(void * args) {
       if(loop_counter % correctionCount == 0) {
         //Straighten out the movement - too close
         current_wall_signal = robot.wallSignal();
-        if(!correctedLastIteration && current_wall_signal >= 20) {
+        if(current_wall_signal >= 25) {
           correctLeft(robot, 1);
-          correctedLastIteration = true;
+          current_extra_angle -= 5;
+          if(current_extra_angle < 5) {
+            current_extra_angle = 5;
+          }
         }
-        else if (!correctedLastIteration && robot.bumpRight()) {
+        else if (robot.bumpRight()) {
           robot.sendDriveCommand(-100, Create::DRIVE_STRAIGHT);
           this_thread::sleep_for(chrono::milliseconds(600)); 
+          // Turn a little more if the robot bumps the wall
           correctLeft(robot, 1.5);
-          correctedLastIteration = true;
+          current_extra_angle -= 5;
+          if(current_extra_angle < 5) {
+            current_extra_angle = 5;
+          }
         }
         else {
-          correctedLastIteration = false;
+          current_extra_angle += 3;
+          if(current_extra_angle > original_extra_angle) {
+            current_extra_angle = original_extra_angle;
+          }
         }
       }
       
@@ -283,10 +293,10 @@ int main ()
            perror("pthread_create overcurrent_thread");
            return -1;
         }
-        if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
-           perror("pthread_create cliff_wheelDrop_thread");
-           return -1;
-        }
+        // if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
+        //    perror("pthread_create cliff_wheelDrop_thread");
+        //    return -1;
+        // }
         if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
             perror("pthread_create objectID_thread");
             return -1;
