@@ -11,10 +11,11 @@ void RobotSafety::stopAndPlaySong(pthread_mutex_t * stream_mutex, Create * robot
         pthread_mutex_unlock(stream_mutex);
 }
 
-void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed) {
+void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed, int speed_diff) {
     pthread_mutex_lock(stream_mutex);
-    robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);			
-	pthread_mutex_unlock(stream_mutex);
+    robot->sendDriveDirectCommand(speed + speed_diff, speed);	
+	//robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
+    pthread_mutex_unlock(stream_mutex);
 }
 
 void * RobotSafety::overcurrent(void * args) {
@@ -22,6 +23,7 @@ void * RobotSafety::overcurrent(void * args) {
     pthread_mutex_t * stream_mutex = info->stream_mutex;
     Create * robot = info->robot;
     int speed = info->speed;
+    int speed_diff = info->speed_diff;
     bool * stopped = info->stopped;
     pthread_cond_t * cv = info->cv;
   
@@ -70,6 +72,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
     pthread_mutex_t * stream_mutex = info->stream_mutex;
     Create * robot = info->robot;
     int speed = info->speed;
+    int speed_diff = info->speed_diff;
     bool * stopped = info->stopped;
     pthread_cond_t * cv = info->cv;
 

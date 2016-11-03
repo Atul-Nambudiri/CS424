@@ -16,7 +16,6 @@ vector<QueryImage> RobotVision::query_images;
 int RobotVision::objects_found;
 
 RobotVision::RobotVision() {
-    cout << "Beginning: \n";
     this->directionVector = Point2f(0.f,1.f);
     this->waypoints = std::vector<Point>();
     this->currWaypoint = Point(0,0);
@@ -107,6 +106,7 @@ void * RobotVision::objectIdentification(void * args) {
     pthread_mutex_t * stream_mutex = info->stream_mutex;
     Create *robot = info->robot;
     int speed = info->speed;
+    int speed_diff = info->speed_diff;
     bool * turning = info->turning;
     pthread_cond_t *cv = info->cv;
     
@@ -133,7 +133,8 @@ void * RobotVision::objectIdentification(void * args) {
         while (*turning) {
           pthread_cond_wait(cv, stream_mutex);
         }
-        robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+        robot->sendDriveDirectCommand(speed + speed_diff, speed); 
+        //robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
         pthread_mutex_unlock(stream_mutex);
 
         cout << "Unlocking" << endl;

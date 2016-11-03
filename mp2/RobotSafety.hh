@@ -12,6 +12,7 @@ using namespace std;
 
 typedef struct RobotSafetyStruct {
 	int speed;
+  int speed_diff;
 	Create * robot;
 	pthread_mutex_t * stream_mutex;
   bool * turning;
@@ -26,7 +27,7 @@ class RobotSafety {
 public:
 
   static void stopAndPlaySong(pthread_mutex_t * stream_mutex, Create * robot, bool * stopped);
-  static void startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed);
+  static void startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed, int speed_diff);
   static void * overcurrent(void * args);
   static void * cliffWheelDrop(void * args);
 };

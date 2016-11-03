@@ -17,11 +17,13 @@ using namespace std;
 
 pthread_mutex_t stream_mutex;
 pthread_cond_t condition_wait;
-int speed = 100;
+int speed = 40;
+int speed_diff = 70;
+int extra_angle = 20;
 bool turning = false;
-int correctionCount = 5000;
-int prev_wall_signal = 0;
+int correctionCount = 6000;
 int current_wall_signal = 0;
+int prev_wall_signal = 0;
 bool stopped = false;
 
 void setTurning(bool turning1) {
@@ -34,9 +36,9 @@ void setTurning(bool turning1) {
 void moveCounterClockwise(Create& robot){
     int local_prev_wall_signal = robot.wallSignal();
     setTurning(true);
-    robot.sendDriveCommand(30, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+    robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
     int current_signal = robot.wallSignal();
-    while(current_signal > local_prev_wall_signal - 4){
+    while(current_signal > local_prev_wall_signal - 3){
             local_prev_wall_signal = current_signal;
             current_signal = robot.wallSignal();
     }
@@ -45,156 +47,93 @@ void moveCounterClockwise(Create& robot){
     cout << "Turned All the way" << endl;
 }
 
-
-void moveClockwise(Create& robot){
-    setTurning(true);
-    robot.sendDriveCommand(55, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-    robot.sendWaitAngleCommand(20);
-    // setTurning(false);
-    robot.sendDriveDirectCommand(speed + 90, speed);
-    // robot.sendDriveCommand (speed, Create::DRIVE_STRAIGHT);
-    while(!robot.bumpLeft() && !robot.bumpRight() && (robot.wallSignal() < 130)) {
-          pthread_mutex_unlock(&stream_mutex);
-          pthread_mutex_lock(&stream_mutex);
-    }
-    robot.sendDriveCommand(-60, Create::DRIVE_STRAIGHT);
- //   pthread_mutex_unlock(&stream_mutex);
-    this_thread::sleep_for(chrono::milliseconds(600));
-   // pthread_mutex_lock(&stream_mutex); 
-    robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
-   // pthread_mutex_unlock(&stream_mutex);          
-    this_thread::sleep_for(chrono::milliseconds(300));
-    cout << "Reached Wall" << endl;
- //   pthread_mutex_lock(&stream_mutex);
-    moveCounterClockwise(robot);
-    robot.sendDriveCommand (0, Create::DRIVE_STRAIGHT); 
-}
-
-void correctLeft(Create& robot) {
+void correctLeft(Create& robot, float multiplier) {
   cout << "Correcting Route - Too Close" << endl;
   setTurning(true);
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-  while(prev_wall_signal - current_wall_signal <= -2) {
-    current_wall_signal = robot.wallSignal();
-  }
+  
+  //Move past parralel so that the robot is facing out
+  robot.sendWaitAngleCommand((short) (extra_angle * multiplier));
   setTurning(false);
-  robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
-}
-
-void correctRight(Create& robot) {
-  cout << "Correcting Route - Too far" << endl;
-  setTurning(true);
-  robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_CLOCKWISE);
-  while(prev_wall_signal - current_wall_signal >= 2) {
-    current_wall_signal = robot.wallSignal();
-  }
-  setTurning(false);
-  robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+  robot.sendDriveDirectCommand(speed + speed_diff, speed);
+  cout << "Corrected" << endl;
 }
 
 void turnLeft(Create& robot, RobotVision& vision) {
   cout << "Reached Wall. Need to turn left" << endl;
-  robot.sendDriveCommand(-30, Create::DRIVE_STRAIGHT);
+  robot.sendDriveCommand(-60, Create::DRIVE_STRAIGHT);
   this_thread::sleep_for(chrono::milliseconds(500)); 
   setTurning(true);
-  robot.sendDriveCommand(50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-  robot.sendWaitAngleCommand(75);
+  robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  robot.sendWaitAngleCommand(40);
   setTurning(false);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   vision.addNewWaypoint(speed);
   moveCounterClockwise(robot);
   prev_wall_signal = robot.wallSignal();
-  vision.updateDirectionVector(); // Does this need to be 90 or -90?
-  robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+  robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  
+  //Move past parralel so that the robot is facing out
+  robot.sendWaitAngleCommand(extra_angle);
+  vision.updateDirectionVector();
+  robot.sendDriveDirectCommand(speed + speed_diff, speed);
   cout << "Done turning left" << endl;
-}
-
-void turnRight(Create& robot, RobotVision& vision) {
-  cout << "Need to turn right" << endl;
-  //pthread_mutex_unlock(&stream_mutex);
-  // this_thread::sleep_for(chrono::milliseconds(4000));
-  //pthread_mutex_lock(&stream_mutex);
-  // robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
-  moveClockwise(robot);
-  prev_wall_signal = robot.wallSignal();
-  vision.addNewWaypoint(speed);
-  vision.updateDirectionVector(); // Does this need to be 90 or -90?
-  setTurning(false);
-  robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
-
 }
 
 void * mainThread(void * args) {
   RobotSafetyStruct * info = (RobotSafetyStruct *) args;
   Create robot = *(info->robot);
-
   bool bump = false;
-
+  
   pthread_mutex_lock(&stream_mutex);
   robot.sendDriveCommand (speed, Create::DRIVE_STRAIGHT);
   cout << "Sent Drive Command" << endl;
   
   while(!bump) {
-    //pthread_mutex_lock(&stream_mutex);
     bump = robot.bumpRight() || robot.bumpLeft();
-    //pthread_mutex_unlock(&stream_mutex);
   }
-  //pthread_mutex_lock(&stream_mutex);
-  //setTurning(true);
+
   robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
-  // pthread_mutex_unlock(&stream_mutex);
+
   this_thread::sleep_for(chrono::milliseconds(200));    
-  // pthread_mutex_lock(&stream_mutex);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);      
-  //setTurning(false);
-  cout << "Reached Wall" << endl;
 
   moveCounterClockwise(robot);
+  prev_wall_signal = robot.wallSignal();
+  robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+
+  //Move past parralel so that the robot is facing out
+  robot.sendWaitAngleCommand(extra_angle);
   robot.sendDriveCommand (0, Create::DRIVE_STRAIGHT);
 
-  prev_wall_signal = robot.wallSignal();
-  robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+  robot.sendDriveDirectCommand(speed + speed_diff, speed);
   int local_play = robot.playButton();
   int loop_counter = 0;
-  int right_turn_counter = 0;
   RobotVision vision;
   pthread_mutex_unlock(&stream_mutex);
+  bool correctedLastIteration = false;
   while (!local_play) { 
       pthread_mutex_lock(&stream_mutex);
-      while(stopped) {
-        cout << "Entered Stop" << endl;
-        pthread_cond_wait(&condition_wait, &stream_mutex);
-        cout << "Left Stop" << endl;
-      }
-      // Need to turn left
+      //Need to turn left
       if(robot.bumpLeft() && robot.bumpRight()) {
           turnLeft(robot, vision);
       }
-
-      //Need to turn righ
-      if(robot.wallSignal() == 0) {
-          right_turn_counter ++;
-          if(right_turn_counter > 700) {
-            turnRight(robot, vision);
-            right_turn_counter = 0;
-          }
-      }
+      //cout << "Need to Correct. Wall Signal: " << robot.wallSignal() << " Prev: " << prev_wall_signal << "Loop Count: " << loop_counter << endl;
       if(loop_counter % correctionCount == 0) {
         //Straighten out the movement - too close
         current_wall_signal = robot.wallSignal();
-        cout << prev_wall_signal << " " << current_wall_signal << " " << loop_counter << endl;
-        if(prev_wall_signal - current_wall_signal <= -10) {
-          correctLeft(robot);
+        if(!correctedLastIteration && current_wall_signal >= 20) {
+          correctLeft(robot, 1);
+          correctedLastIteration = true;
         }
-        else if(robot.bumpRight()) {
-          setTurning(true);
-          robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
-          this_thread::sleep_for(chrono::milliseconds(100));
-          correctLeft(robot);
+        else if (!correctedLastIteration && robot.bumpRight()) {
+          robot.sendDriveCommand(-100, Create::DRIVE_STRAIGHT);
+          this_thread::sleep_for(chrono::milliseconds(600)); 
+          correctLeft(robot, 1.5);
+          correctedLastIteration = true;
         }
-
-        if(prev_wall_signal - current_wall_signal >= 5  || current_wall_signal == 0) {
-          correctRight(robot);
+        else {
+          correctedLastIteration = false;
         }
       }
       
@@ -210,61 +149,45 @@ void * mainThread(void * args) {
 
 int main ()
 {
-  	char serial_loc[] = "/dev/ttyUSB0";
+    char serial_loc[] = "/dev/ttyUSB0";
 
-  	try
-  	{
-        cout << "Test" << endl;
-    		// raspicam::RaspiCam_Cv Camera;
-    		// cv::Mat rgb_image, bgr_image;
-    		// if (!Camera.open()) {
-      //   		cerr << "Error opening the camera" << endl;
-      //   		return -1;
-      // 	}
-      	cout << "Opened Camera" << endl;
-      	SerialStream stream (serial_loc, LibSerial::SerialStreamBuf::BAUD_57600);
-      	cout << "Opened Serial Stream to" << serial_loc << endl;
-      	this_thread::sleep_for(chrono::milliseconds(1000));
-      	Create robot(stream);
+    try
+    {
+        SerialStream stream (serial_loc, LibSerial::SerialStreamBuf::BAUD_57600);
+        cout << "Opened Serial Stream to" << serial_loc << endl;
+        this_thread::sleep_for(chrono::milliseconds(1000));
+        Create robot(stream);
         cout << "test" << endl;
-      	cout << "Created iRobot Object" << endl;
-      	robot.sendFullCommand();
-      	cout << "Setting iRobot to Full Mode" << endl;
-      	this_thread::sleep_for(chrono::milliseconds(1000));
-      	cout << "Robot is ready" << endl;
-  	
-    		// Set up the song to play
-    		Create::note_t note1(50, 50);
-    	
-    		Create::song_t song;
-    		song.push_back(note1);	
-    	
-    		robot.sendSongCommand(0, song);
+        cout << "Created iRobot Object" << endl;
+        robot.sendFullCommand();
+        cout << "Setting iRobot to Full Mode" << endl;
+        this_thread::sleep_for(chrono::milliseconds(1000));
+        cout << "Robot is ready" << endl;
+    
+        // Set up the song to play
+        Create::note_t note1(50, 50);
+    
+        Create::song_t song;
+        song.push_back(note1);  
+    
+        robot.sendSongCommand(0, song);
 
-		/* Sensor packet structure: 
-		 * 1 byte header
-		 * 1 byte size
-		 * 1 byte packet id
-		 * # bytes data (defined by packet) 
-		 * ...
-		 * 1 byte checksum */
-
-      	// Let's stream some sensors.
-      	Create::sensorPackets_t sensors;
-      	sensors.push_back(Create::SENSOR_BUMPS_WHEELS_DROPS); /* 1 data byte */
+        // Let's stream some sensors.
+        Create::sensorPackets_t sensors;
+        sensors.push_back(Create::SENSOR_BUMPS_WHEELS_DROPS); /* 1 data byte */
         sensors.push_back(Create::SENSOR_OVERCURRENTS); /* 1 data byte + 2 possible unused bytes */
-      	sensors.push_back(Create::SENSOR_WALL_SIGNAL); /* 2 data bytes */
-		    sensors.push_back(Create::SENSOR_CLIFF_LEFT_SIGNAL);
-    		sensors.push_back(Create::SENSOR_CLIFF_FRONT_LEFT_SIGNAL);
-    		sensors.push_back(Create::SENSOR_CLIFF_FRONT_RIGHT_SIGNAL);
-    		sensors.push_back(Create::SENSOR_CLIFF_RIGHT_SIGNAL);
-      	sensors.push_back (Create::SENSOR_BUTTONS);
+        sensors.push_back(Create::SENSOR_WALL_SIGNAL); /* 2 data bytes */
+        sensors.push_back(Create::SENSOR_CLIFF_LEFT_SIGNAL);
+        sensors.push_back(Create::SENSOR_CLIFF_FRONT_LEFT_SIGNAL);
+        sensors.push_back(Create::SENSOR_CLIFF_FRONT_RIGHT_SIGNAL);
+        sensors.push_back(Create::SENSOR_CLIFF_RIGHT_SIGNAL);
+        sensors.push_back (Create::SENSOR_BUTTONS);
         //sensors.push_back(Create::SENSOR_GROUP_0);
         //sensors.push_back(Create::SENSOR_GROUP_3);
 
-      	robot.sendStreamCommand (sensors);
-      	cout << "Sent Stream Command" << endl;
-		
+        robot.sendStreamCommand (sensors);
+        cout << "Sent Stream Command" << endl;
+        
         pthread_cond_init(&condition_wait, NULL);
         pthread_mutex_init(&stream_mutex, NULL);
 
@@ -345,6 +268,7 @@ int main ()
 
         RobotSafetyStruct thread_info;
         thread_info.speed = speed;
+        thread_info.speed_diff = speed_diff;
         thread_info.robot = &robot;
         thread_info.stream_mutex = &stream_mutex;
         thread_info.turning = &turning;
@@ -355,18 +279,18 @@ int main ()
             perror("pthread_create main_thread");
             return -1;
         }
-        // if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
-        //    perror("pthread_create overcurrent_thread");
-        //    return -1;
-        // }
-		// if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
-  //          perror("pthread_create cliff_wheelDrop_thread");
-  //          return -1;
-  //       }
-        // if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
-        //     perror("pthread_create objectID_thread");
-        //     return -1;
-        // }
+        if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
+           perror("pthread_create overcurrent_thread");
+           return -1;
+        }
+        if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
+           perror("pthread_create cliff_wheelDrop_thread");
+           return -1;
+        }
+        if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
+            perror("pthread_create objectID_thread");
+            return -1;
+        }
 
         cout << "After Create" << endl;
         sleep(10);
@@ -380,18 +304,18 @@ int main ()
         pthread_attr_destroy(&visionAttr);
         pthread_attr_destroy(&OCAttr);
         pthread_attr_destroy(&mainAttr);
-    		robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
-    }	
-  	catch (InvalidArgument& e)
-  	{
-  	  	cerr << e.what () << endl;
-    	return 3;
-  	}
-  	catch (CommandNotAvailable& e)
-  	{
-  		cerr << e.what () << endl;
-    	return 4;
-  	}
-  	cout << "Hi" << endl;	
+            robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+    }   
+    catch (InvalidArgument& e)
+    {
+        cerr << e.what () << endl;
+        return 3;
+    }
+    catch (CommandNotAvailable& e)
+    {
+        cerr << e.what () << endl;
+        return 4;
+    }
+    cout << "Hi" << endl;   
 }
  
