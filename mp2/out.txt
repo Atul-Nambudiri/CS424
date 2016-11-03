@@ -1,0 +1,13 @@
+Test
+Opened Camera
+Opened Serial Stream to/dev/ttyUSB0
+test
+Created iRobot Object
+Setting iRobot to Full Mode
+Robot is ready
+Sent Stream Command
+Test
+After
+After Create
+Driving straight
+Bump!
