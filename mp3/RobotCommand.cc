@@ -30,7 +30,7 @@ RobotCommand::~RobotCommand() {
   }
 }
 
-void push(ComSig) {
+void RobotCommand::push(ComSig) {
   pthread_mutex_lock(&m);
   queue_node_t * node = malloc(sizeof(queue_node_t));
   node->commmand = command;
@@ -45,14 +45,14 @@ void push(ComSig) {
   pthread_mutex_unlock(&m);
 }
 
-ComSig pull() {
+ComSig RobotCommand::pull() {
   pthread_mutex_lock(&m);
   while (size == 0) {
     pthread_cond_wait(&cv, &m);
   }
   queue_node_t * tmp = head;
   head = head->next;
-  commSig = tmp->command;
+  ComSig ret = tmp->command;
   free(tmp);
   tmp = NULL;
   size--;
