@@ -32,6 +32,8 @@ void setTurning(bool turning1) {
 }
 
 void moveCounterClockwise(Create& robot){
+  pthread_mutex_lock(&stream_mutex); // Lock
+  
   int local_prev_wall_signal = robot.wallSignal();
   setTurning(true);
   robot.sendDriveCommand(30, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
@@ -42,6 +44,9 @@ void moveCounterClockwise(Create& robot){
   }
   setTurning(false);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+  
+  pthread_mutex_unlock(&stream_mutex); // Unlock
+  
   cout << "Turned All the way" << endl;
 }
 
@@ -73,23 +78,39 @@ void moveClockwise(Create& robot){
 void correctLeft(Create& robot) {
   cout << "Correcting Route - Too Close" << endl;
   setTurning(true);
+
+  pthread_mutex_lock(&stream_mutex);  // Lock
+  
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-  while(prev_wall_signal - current_wall_signal <= -2) {
-    current_wall_signal = robot.wallSignal();
-  }
+  this_thread::sleep_for(chrono::milliseconds(50));
+  
+
+  pthread_mutex_unlock(&stream_mutex); // Unlock
+  
   setTurning(false);
+
+  pthread_mutex_lock(&stream_mutex);
   robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+  pthread_mutex_unlock(&stream_mutex);
 }
 
 void correctRight(Create& robot) {
   cout << "Correcting Route - Too far" << endl;
   setTurning(true);
+
+  pthread_mutex_lock(&stream_mutex); // Lock
+  
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_CLOCKWISE);
-  while(prev_wall_signal - current_wall_signal >= 2) {
-    current_wall_signal = robot.wallSignal();
-  }
+  this_thread::sleep_for(chrono::milliseconds(50));
+
+  pthread_mutex_unlock(&stream_mutex); // Unlock
+  
   setTurning(false);
+
+  pthread_mutex_lock(&stream_mutex);
   robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+  pthread_mutex_unlock(&stream_mutex);
+  
 }
 
 void turnLeft(Create& robot, RobotVision& vision) {
@@ -135,32 +156,35 @@ void * mainThread(void * args) {
   cout << "Sent Drive Command" << endl;
   
   while(!bump) {
-    //pthread_mutex_lock(&stream_mutex);
+    pthread_mutex_lock(&stream_mutex);
     bump = robot.bumpRight() || robot.bumpLeft();
-    //pthread_mutex_unlock(&stream_mutex);
+    pthread_mutex_unlock(&stream_mutex);
   }
-  //pthread_mutex_lock(&stream_mutex);
-  //setTurning(true);
-  robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
-  // pthread_mutex_unlock(&stream_mutex);
-  this_thread::sleep_for(chrono::milliseconds(200));    
-  // pthread_mutex_lock(&stream_mutex);
-  robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);      
-  //setTurning(false);
+  
   cout << "Reached Wall" << endl;
 
+  pthread_mutex_lock(&stream_mutex);
+  robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
+  this_thread::sleep_for(chrono::milliseconds(200));    
+  robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);      
+  pthread_mutex_unlock(&stream_mutex);
+  
   moveCounterClockwise(robot);
-  robot.sendDriveCommand (0, Create::DRIVE_STRAIGHT);
 
+  pthread_mutex_lock(robot); // Lock
+  
   prev_wall_signal = robot.wallSignal();
   robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+  
   int local_play = robot.playButton();
   int loop_counter = 0;
   int right_turn_counter = 0;
   RobotVision vision;
-  pthread_mutex_unlock(&stream_mutex);
+  
+  pthread_mutex_unlock(&stream_mutex); // Unlock
+  
   while (!local_play) { 
-    pthread_mutex_lock(&stream_mutex);
+    pthread_mutex_lock(&stream_mutex); // Lock
     while(stopped) {
       cout << "Entered Stop" << endl;
       pthread_cond_wait(&condition_wait, &stream_mutex);

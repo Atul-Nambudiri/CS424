@@ -102,6 +102,7 @@ void * RobotVision::objectIdentification(void * args) {
       cerr << "Error opening camera" << endl;
       return NULL;
     }
+    cout << "Starting objectIdentifaction Thread" << endl;
     RobotSafetyStruct * info = (RobotSafetyStruct *) args;
     pthread_mutex_t * stream_mutex = info->stream_mutex;
     Create *robot = info->robot;
@@ -126,14 +127,14 @@ void * RobotVision::objectIdentification(void * args) {
         Camera.grab();
         //cout << "After Grab" << endl;
         Camera.retrieve (bgr_image);
-        //cout << "Retrieved Image" << endl;
+        cout << "Retrieved Image" << endl;
 
         //@TODO: Make robot keep moving forward
         //pthread_mutex_lock(stream_mutex);
         while (*turning) {
           pthread_cond_wait(cv, stream_mutex);
         }
-        robot->sendDriveDirectCommand(speed + speed_diff, speed); 
+        robot->sendDriveDirectCommand(speed + speed_diff, speed);
         //robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
         pthread_mutex_unlock(stream_mutex);
 
@@ -221,7 +222,7 @@ bool RobotVision::identify(Mat& img_query, Mat& scene_image_full, string output_
         vector<Point2f> scene_corners(4);
         bool res = alignPerspective(
             query, scene, img_query, img_scene, scene_corners);
-        //cout << "Matching and alignment" << endl;
+        cout << "Matching and alignment" << endl;
 
         if (res) {  
           cout << "Object found" << endl;
