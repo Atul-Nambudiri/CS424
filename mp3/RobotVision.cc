@@ -96,7 +96,7 @@ void * RobotVision::objectIdentification(void * args) {
                 image_mat
               };
               if(strcmp(image->d_name, "magic-lamp-600.jpg") == 0) {
-                magicLamp = &input;
+                magic_lamp = &input;
               }
               query_images.push_back(input);
           }
@@ -181,13 +181,14 @@ void RobotVision::identifyAndOutput() {
     pthread_create(&workers[i], NULL, &RobotVision::runIdentify, NULL);
   }
   for(int i = 0; i < 4; i ++) {
-    pthread_join(&workers[i], NULL);
+    pthread_join(workers[i], NULL);
   }
   ofstream myfile;
   myfile.open("./found_images/found_images.txt", ofstream::out | ofstream::app);
   myfile << "Found " << to_string(found_objects_count) << " images\n" << endl;
   while(!objects_found.empty()) {
-    myfile << "Found: " << objects_found.pop() << "\n\n";
+    myfile << "Found: " << objects_found.front() << "\n\n";
+    objects_found.pop();
   }
   myfile.close();
 }
@@ -196,7 +197,8 @@ void * RobotVision::runIdentify(void * args) {
   pthread_mutex_lock(&identify_mutex);
   bool empty = image_queue.empty();
   while(!empty) {
-    Mat scene_image = image_queue.pop();
+    Mat scene_image = image_queue.front();
+    image_queue.pop()
     pthread_mutex_unlock(&identify_mutex);
     for(std::vector<QueryImage>::iterator it = query_images.begin(); it != query_images.end();) {
       pthread_mutex_lock(&identify_mutex);
@@ -278,7 +280,7 @@ bool RobotVision::identify(Mat& img_query, Mat& scene_image_full, string output_
         if (res) {  
           cout << "Object found" << endl;
           //We don't need to save anything if its the magic lamp
-          if (strcmp(output_file_name, "") != 0) {
+          if (strcmp(output_file_name, "".c_str()) != 0) {
             // Write output to file
             Mat img_matches;
             drawMatches(img_query, keypoints_query, img_scene, keypoints_scene,
