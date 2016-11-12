@@ -24,14 +24,14 @@ int main(int argc, char** argv) {
     SerialStream stream("/dev/ttyUSB0", LibSerial::SerialStreamBuf::BAUD_57600);
     sleep(1);
     robot = new Create(stream);
-    robot.sendFullCommand();
+    robot->sendFullCommand();
     sleep(1);
     pthread_mutex_t stream_mutex;
-    pthread_mutex_init(&stream_mutex);
+    pthread_mutex_init(&stream_mutex, NULL);
 
     /* Create thread */
     pthread_t command_thread;
-    RobotCommand::RobotCommand queue(&stream_mutex);
+    RobotCommand queue(&stream_mutex);
     pthread_create(&command_thread, NULL, RobotCommand::executeCommands, &queue);
     queue.push(driveStraight);
     pthread_join(command_thread, NULL);

@@ -4,9 +4,9 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-class RobotCommand {
+typedef void* (* ComSig)(void*param);
 
-  typedef void* (* ComSig)(void*param);
+class RobotCommand {
 
 public:
 
@@ -15,6 +15,8 @@ public:
   static void * executeCommands(void * args);
   void push(ComSig);
   ComSig pull();
+
+  pthread_mutex_t * s_m;
 
 private:
 
@@ -25,7 +27,6 @@ private:
 
   queue_node_t *head, *tail;
   int size;
-  pthread_mutex_t * s_m;
   pthread_mutex_t m;
   pthread_cond_t cv;
 
