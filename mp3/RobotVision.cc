@@ -13,7 +13,12 @@ using std::string;
 using std::vector;
 
 vector<QueryImage> RobotVision::query_images;
-int RobotVision::objects_found;
+QueryImage RobotVision::magic_lamp;
+queue<Mat> RobotVision::image_queue;
+queue<string> RobotVision::objects_found;
+bool RobotVision::lamp_found = false;
+int RobotVision::found_objects_count = 0;
+pthread_mutex_t RobotVision::identify_mutex;
 
 RobotVision::RobotVision() {
     this->directionVector = Point2f(0.f,1.f);
@@ -91,6 +96,9 @@ void * RobotVision::objectIdentification(void * args) {
                 image->d_name,
                 image_mat
               };
+              if(strcmp(image->d_name, "magic-lamp-600.jpg") == 0) {
+                magicLamp = imput;
+              }
               query_images.push_back(input);
           }
       }
@@ -110,38 +118,52 @@ void * RobotVision::objectIdentification(void * args) {
     int speed_diff = info->speed_diff;
     bool * turning = info->turning;
     pthread_cond_t *cv = info->cv;
+
+    bool moving = true; //Get this as a global variable
     
-    while(1) {
-        pthread_mutex_lock(stream_mutex);
-        while (*turning) {
-          pthread_cond_wait(cv, stream_mutex);
+    while(moving) {
+      pthread_mutex_lock(stream_mutex);
+      while (*turning) {
+        pthread_cond_wait(cv, stream_mutex);
+      }
+
+      robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+      this_thread::sleep_for(chrono::milliseconds(100));
+      Camera.grab();
+      Camera.retrieve (bgr_image);
+      cout << "Retrieved Image" << endl;
+
+      //@TODO: Make robot keep moving forward
+      //pthread_mutex_lock(stream_mutex);
+      while (*turning) {
+        pthread_cond_wait(cv, stream_mutex);
+      }
+      robot->sendDriveDirectCommand(speed + speed_diff, speed);
+      //robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
+      pthread_mutex_unlock(stream_mutex);
+
+      cout << "Unlocking" << endl;
+      if(!lamp_found) {
+        if(identify(bgr_image, magic_lamp->image, "")) {
+          //Stop the robot and disarm the lamp
+          pthread_mutex_lock(stream_mutex);
+          while (*turning) {
+            pthread_cond_wait(cv, stream_mutex);
+          }
+          robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+          robot.sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
+          this_thread::sleep_for(chrono::milliseconds(2000));
+          robot.sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_OFF);
+          stream_mutex.unlock();
         }
-
-        
-        robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
-        //pthread_mutex_unlock(stream_mutex);
-
-        this_thread::sleep_for(chrono::milliseconds(100));
-	
-        //cout << "Before Grab" << endl;
-        Camera.grab();
-        //cout << "After Grab" << endl;
-        Camera.retrieve (bgr_image);
-        cout << "Retrieved Image" << endl;
-
-        //@TODO: Make robot keep moving forward
-        //pthread_mutex_lock(stream_mutex);
-        while (*turning) {
-          pthread_cond_wait(cv, stream_mutex);
-        }
-        robot->sendDriveDirectCommand(speed + speed_diff, speed);
-        //robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
-        pthread_mutex_unlock(stream_mutex);
-
-        cout << "Unlocking" << endl;
-
-        runIdentify(bgr_image);
+      }
+      image_queue.push(bgr_image);
+      moving = true;
+      this_thread::sleep_for(chrono::milliseconds(2000));
     }
+    //We are finished with moving. Run the object Identification here.
+    identifyAndOutput();
+
   } catch (InvalidArgument& e) {
     cerr << e.what() << endl;
     return NULL;
@@ -153,21 +175,50 @@ void * RobotVision::objectIdentification(void * args) {
     
 }
 
-bool RobotVision::runIdentify(Mat& scene_image) {
-    for(std::vector<QueryImage>::iterator it = query_images.begin(); it != query_images.end();) {
-        if(identify(it->image, scene_image, "./found_images/found_image_" + to_string(++objects_found) + ".jpg")) {
-            ofstream myfile;
-            myfile.open("./found_images/found_images.txt", ofstream::out | ofstream::app);
-            myfile << "Found: " << to_string(objects_found) << ": " << it->name << "\n\n";
-            myfile.close();
-            query_images.erase(it);
-        }
-        else {
-            it++;
-        }
-    }
+void RobotVision::identifyAndOutput() {
+  pthread_mutex_t workers[4];
+  for(int i = 0; i < 4; i ++) {
+    pthread_create(&workers[i], NULL, &RobotVision::runIdentify, NULL);
+  }
+  for(int i = 0; i < 4; i ++) {
+    pthread_join(&workers[i], NULL);
+  }
+  ofstream myfile;
+  myfile.open("./found_images/found_images.txt", ofstream::out | ofstream::app);
+  myfile << "Found " << to_string(found_objects_count) << " images\n" << endl;
+  while(!objects_found.empty()) {
+    myfile << "Found: " << objects_found.pop() << "\n\n";
+  }
+  myfile.close();
 }
 
+void * RobotVision::runIdentify(void * args) {
+  pthread_mutex_lock(&identify_mutex);
+  bool empty = image_queue.empty();
+  while(!empty) {
+    Mat scene_image = image_queue.pop();
+    pthread_mutex_unlock(&identify_mutex);
+    for(std::vector<QueryImage>::iterator it = query_images.begin(); it != query_images.end();) {
+      pthread_mutex_lock(&identify_mutex);
+      int local_found_count = found_objects_count;
+      pthread_mutex_unlock(&identify_mutex);
+      if(identify(it->image, scene_image, "./found_images/found_image_" + to_string(++local_found_count) + ".jpg")) {
+          pthread_mutex_lock(&identify_mutex);
+          query_images.erase(it);
+          found_objects_count ++;
+          objects_found.push(it->name);
+          pthread_mutex_unlock(&identify_mutex);
+      }
+      else {
+          it++;
+      }
+    }
+    pthread_mutex_lock(&identify_mutex);
+    empty = image_queue.empty();
+  }
+  pthread_mutex_unlock(&identify_mutex);
+  return NULL;
+}
 
 
 bool RobotVision::identify(Mat& img_query, Mat& scene_image_full, string output_file_name) {
@@ -226,25 +277,28 @@ bool RobotVision::identify(Mat& img_query, Mat& scene_image_full, string output_
 
         if (res) {  
           cout << "Object found" << endl;
-          // Write output to file
-          Mat img_matches;
-          drawMatches(img_query, keypoints_query, img_scene, keypoints_scene,
-              good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
-              vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+          //We don't need to save anything if its the magic lamp
+          if (strcmp(objects_found, "") != 0) {
+            // Write output to file
+            Mat img_matches;
+            drawMatches(img_query, keypoints_query, img_scene, keypoints_scene,
+                good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
+                vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
-          // Fill the extra area in almost white (Saves ink when printing)
-          if (img_query.rows < img_scene.rows) {
-            rectangle(img_matches, Point2f(0, img_query.rows),
-                Point2f(img_query.cols - 1, img_scene.rows - 1),
-                Scalar(255, 240, 240), CV_FILLED);
-          } else if (img_scene.rows < img_query.rows) {
-            rectangle(img_matches, Point2f(img_query.cols, img_scene.rows),
-                Point2f(img_query.cols + img_scene.cols - 1, img_query.rows - 1),
-                Scalar(255, 240, 240), CV_FILLED);
+            // Fill the extra area in almost white (Saves ink when printing)
+            if (img_query.rows < img_scene.rows) {
+              rectangle(img_matches, Point2f(0, img_query.rows),
+                  Point2f(img_query.cols - 1, img_scene.rows - 1),
+                  Scalar(255, 240, 240), CV_FILLED);
+            } else if (img_scene.rows < img_query.rows) {
+              rectangle(img_matches, Point2f(img_query.cols, img_scene.rows),
+                  Point2f(img_query.cols + img_scene.cols - 1, img_query.rows - 1),
+                  Scalar(255, 240, 240), CV_FILLED);
+            }
+            drawProjection(img_matches, img_query, scene_corners);
+            // Write result to a file
+            cv::imwrite(output_file_name, img_matches);
           }
-          drawProjection(img_matches, img_query, scene_corners);
-          // Write result to a file
-          cv::imwrite(output_file_name, img_matches);
         } else {
           cout << "Object not found" << endl;
         }

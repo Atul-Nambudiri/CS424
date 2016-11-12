@@ -53,11 +53,16 @@ public:
     void updateDirectionVector(float rotationAngle = 90.f); 
     void addNewWaypoint(int robotSpeed);
     void drawContourMap();
-    static bool runIdentify(Mat& scene_image);
+    static void identifyAndOutput();
+    static coid * runIdentify(Mat& scene_image);
     static vector<QueryImage> query_images;
-    static int objects_found;
-  
+    static QueryImage magic_lamp;
+    static queue<Mat> image_queue;
+    static queue<string> objects_found;
+    static bool lamp_found;
+    static int found_objects_count;
     static void * objectIdentification(void * args);
+    static pthread_mutex_t identify_mutex;
    
 };
 
