@@ -43,7 +43,7 @@ void moveCounterClockwise(Create& robot){
   int counter = 0;
   while(!counter){ // current_signal > local_prev_wal_signal - 4
     cout << current_signal << " " << local_prev_wall_signal << endl;
-    if (current_signal > local_prev_wall_signal) counter++;
+    if (current_signal < local_prev_wall_signal && current_signal > 10) counter++;
     else {
       counter = 0;
     }
@@ -51,6 +51,7 @@ void moveCounterClockwise(Create& robot){
     this_thread::sleep_for(chrono::milliseconds(50));
     current_signal = robot.wallSignal();
   }
+  this_thread::sleep_for(chrono::milliseconds(180)); // Turn a little bit more
   setTurning(false);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   cout << "Turned All the way" << endl;
