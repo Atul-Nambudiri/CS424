@@ -13,7 +13,7 @@ using std::string;
 using std::vector;
 
 vector<QueryImage> RobotVision::query_images;
-QueryImage RobotVision::magic_lamp;
+QueryImage * RobotVision::magic_lamp;
 queue<Mat> RobotVision::image_queue;
 queue<string> RobotVision::objects_found;
 bool RobotVision::lamp_found = false;
@@ -84,7 +84,6 @@ void RobotVision::drawContourMap(){
 
 void * RobotVision::objectIdentification(void * args) {
   // Object identification setup
-  objects_found = 0;
   DIR *pDIR;
   struct dirent * image;
   string dir = "./query-image/low-resolution";
@@ -97,7 +96,7 @@ void * RobotVision::objectIdentification(void * args) {
                 image_mat
               };
               if(strcmp(image->d_name, "magic-lamp-600.jpg") == 0) {
-                magicLamp = imput;
+                magicLamp = &input;
               }
               query_images.push_back(input);
           }
@@ -151,10 +150,11 @@ void * RobotVision::objectIdentification(void * args) {
             pthread_cond_wait(cv, stream_mutex);
           }
           robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
-          robot.sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
+          robot->sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
           this_thread::sleep_for(chrono::milliseconds(2000));
-          robot.sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_OFF);
-          stream_mutex.unlock();
+          robot->sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_OFF);
+          pthread_mutex_unlock(stream_mutex);
+          lamp_found = true;
         }
       }
       image_queue.push(bgr_image);
@@ -176,7 +176,7 @@ void * RobotVision::objectIdentification(void * args) {
 }
 
 void RobotVision::identifyAndOutput() {
-  pthread_mutex_t workers[4];
+  pthread_t workers[4];
   for(int i = 0; i < 4; i ++) {
     pthread_create(&workers[i], NULL, &RobotVision::runIdentify, NULL);
   }
@@ -278,7 +278,7 @@ bool RobotVision::identify(Mat& img_query, Mat& scene_image_full, string output_
         if (res) {  
           cout << "Object found" << endl;
           //We don't need to save anything if its the magic lamp
-          if (strcmp(objects_found, "") != 0) {
+          if (strcmp(output_file_name, "") != 0) {
             // Write output to file
             Mat img_matches;
             drawMatches(img_query, keypoints_query, img_scene, keypoints_scene,
