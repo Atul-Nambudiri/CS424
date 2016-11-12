@@ -38,18 +38,15 @@ void setTurning(bool turning1) {
 void moveCounterClockwise(Create& robot){
   int local_prev_wall_signal = robot.wallSignal();
   setTurning(true);
-  robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  robot.sendDriveCommand(30, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   int current_signal = robot.wallSignal();
 
-  while(true){ // current_signal > local_prev_wal_signal - 4
+  while(current_signal > local_prev_wall_signal - 4){ // current_signal > local_prev_wal_signal - 4
     cout << current_signal << " " << local_prev_wall_signal << endl;
-    if (current_signal < local_prev_wall_signal && current_signal > 10) break;
 
     local_prev_wall_signal = current_signal;
-    this_thread::sleep_for(chrono::milliseconds(50));
     current_signal = robot.wallSignal();
   }
-  this_thread::sleep_for(chrono::milliseconds(180)); // Turn a little bit more
   setTurning(false);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   cout << "Turned All the way" << endl;
@@ -59,7 +56,7 @@ void moveCounterClockwise(Create& robot){
 void moveClockwise(Create& robot){
   setTurning(true);
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_CLOCKWISE);
-  robot.sendWaitAngleCommand(15);
+  robot.sendWaitAngleCommand(-15);
   // setTurning(false);
   robot.sendDriveCommand(speed, 305);
   // robot.sendDriveCommand (speed, Create::DRIVE_STRAIGHT);
