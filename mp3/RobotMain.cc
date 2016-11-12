@@ -23,7 +23,7 @@ int speed_diff = 70; // 70
 int original_extra_angle = 20;
 int current_extra_angle = original_extra_angle;
 bool turning = false;
-int correctionCount = 3000;
+int correctionCount = 20000;
 int current_wall_signal = 0;
 int prev_wall_signal = 0;
 bool stopped = false;
@@ -38,10 +38,17 @@ void setTurning(bool turning1) {
 void moveCounterClockwise(Create& robot){
   int local_prev_wall_signal = robot.wallSignal();
   setTurning(true);
-  robot.sendDriveCommand(30, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   int current_signal = robot.wallSignal();
-  while(current_signal > local_prev_wall_signal - 4){
+  int counter = 0;
+  while(!counter){ // current_signal > local_prev_wal_signal - 4
+    cout << current_signal << " " << local_prev_wall_signal << endl;
+    if (current_signal > local_prev_wall_signal) counter++;
+    else {
+      counter = 0;
+    }
     local_prev_wall_signal = current_signal;
+    this_thread::sleep_for(chrono::milliseconds(50));
     current_signal = robot.wallSignal();
   }
   setTurning(false);
@@ -89,7 +96,7 @@ void correctRight(Create& robot) {
   cout << "Correcting Route - Too far" << endl;
   setTurning(true);
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_CLOCKWISE);
-  while(prev_wall_signal - current_wall_signal >= 2) {
+  while(prev_wall_signal - current_wall_signal >= 2 && current_wall_signal != 0) {
     current_wall_signal = robot.wallSignal();
   }
   setTurning(false);
@@ -116,9 +123,9 @@ void turnLeft(Create& robot, RobotVision& vision) {
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
   //pthread_mutex_unlock(&stream_mutex);
-  // this_thread::sleep_for(chrono::milliseconds(4000));
+  this_thread::sleep_for(chrono::milliseconds(2000));
   //pthread_mutex_lock(&stream_mutex);
-  // robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+  robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   moveClockwise(robot);
   prev_wall_signal = robot.wallSignal();
   vision.addNewWaypoint(speed);
@@ -128,7 +135,7 @@ void turnRight(Create& robot, RobotVision& vision) {
 
 }
 
-void * movementThread(void * args) {
+void * mainThread(void * args) {
   RobotSafetyStruct * info = (RobotSafetyStruct *) args;
   Create robot = *(info->robot);
 
@@ -172,7 +179,7 @@ void * movementThread(void * args) {
     //Need to turn right
     if(robot.wallSignal() == 0) {
       right_turn_counter ++;
-      if(right_turn_counter > 700) {
+      if(right_turn_counter > 1000) {
 	turnRight(robot, vision);
 	right_turn_counter = 0;
       }
@@ -191,7 +198,7 @@ void * movementThread(void * args) {
 	correctLeft(robot);
       }
 
-      if(prev_wall_signal - current_wall_signal >= 5  || current_wall_signal == 0) {
+      if(prev_wall_signal - current_wall_signal >= 5) {
 	correctRight(robot);
       }
     }
@@ -208,7 +215,7 @@ void * movementThread(void * args) {
   return NULL;
 }
 
-int main (int argc, char** argv)
+int main(int argc, char** argv)
 {
   pid_t child = fork();
 
@@ -347,7 +354,7 @@ int main (int argc, char** argv)
 	perror("pthread_create main_thread");
 	return -1;
       }
-      if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
+      /*      if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
 	perror("pthread_create overcurrent_thread");
 	return -1;
       }
@@ -359,7 +366,7 @@ int main (int argc, char** argv)
 	perror("pthread_create objectID_thread");
 	return -1;
       }
-
+      */
       cout << "After Create" << endl;
       sleep(10);
 
