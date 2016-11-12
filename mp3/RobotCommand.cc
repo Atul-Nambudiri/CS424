@@ -4,9 +4,9 @@ void * executeCommands(void * args) {
   while (true) {
     RobotCommand * queue = (RobotCommand *) args;
     ComSig command = queue->pull();
-    pthread_mutex_lock(s_m);
+    pthread_mutex_lock(queue->s_m);
     command(NULL);
-    pthread_mutex_unlock(s_m);
+    pthread_mutex_unlock(queue->s_m);
   }
 }
 
@@ -16,8 +16,8 @@ RobotCommand::RobotCommand(pthread_mutex_t * stream_mutex) {
   size = 0;
   s_m = stream_mutex;
 
-  pthread_mutex_init(&m);
-  pthread_cond_init(&cv);
+  pthread_mutex_init(&m, NULL);
+  pthread_cond_init(&cv, NULL);
 }
 
 RobotCommand::~RobotCommand() {
@@ -30,7 +30,7 @@ RobotCommand::~RobotCommand() {
   }
 }
 
-void RobotCommmand::push(comSig) {
+void push(ComSig) {
   pthread_mutex_lock(&m);
   queue_node_t * node = malloc(sizeof(queue_node_t));
   node->commmand = command;
@@ -45,7 +45,7 @@ void RobotCommmand::push(comSig) {
   pthread_mutex_unlock(&m);
 }
 
-comSig RobotCommand::pull() {
+ComSig pull() {
   pthread_mutex_lock(&m);
   while (size == 0) {
     pthread_cond_wait(&cv, &m);
