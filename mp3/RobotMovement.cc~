@@ -135,13 +135,17 @@ void * movementThread(void * args) {
   pthread_mutex_unlock(&stream_mutex);
   while (true) { 
     pthread_mutex_lock(&stream_mutex);
-
+    while(stopped) {
+      cout << "Entered Stop" << endl;
+      pthread_cond_wait(&condition_wait, &stream_mutex);
+      cout << "Left Stop" << endl;
+    }
     // Need to turn left
     if(robot.bumpLeft() && robot.bumpRight()) {
       turnLeft(robot, vision);
     }
 
-    //Need to turn right
+    //Need to turn righ
     if(robot.wallSignal() == 0) {
       right_turn_counter ++;
       if(right_turn_counter > 700) {
