@@ -40,13 +40,11 @@ void moveCounterClockwise(Create& robot){
   setTurning(true);
   robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   int current_signal = robot.wallSignal();
-  int counter = 0;
-  while(!counter){ // current_signal > local_prev_wal_signal - 4
+
+  while(true){ // current_signal > local_prev_wal_signal - 4
     cout << current_signal << " " << local_prev_wall_signal << endl;
-    if (current_signal < local_prev_wall_signal && current_signal > 10) counter++;
-    else {
-      counter = 0;
-    }
+    if (current_signal < local_prev_wall_signal && current_signal > 10) break;
+
     local_prev_wall_signal = current_signal;
     this_thread::sleep_for(chrono::milliseconds(50));
     current_signal = robot.wallSignal();
