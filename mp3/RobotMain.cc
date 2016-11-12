@@ -18,7 +18,7 @@ using namespace std;
 
 pthread_mutex_t stream_mutex;
 pthread_cond_t condition_wait;
-int speed = 50; // 50
+int speed = 200; // 50
 int speed_diff = 70; // 70
 int original_extra_angle = 20;
 int current_extra_angle = original_extra_angle;
@@ -111,6 +111,101 @@ void turnLeft(Create& robot, RobotVision& vision) {
   vision.updateDirectionVector(); // Does this need to be 90 or -90?
   robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
   cout << "Done turning left" << endl;
+}
+
+void turnRight(Create& robot, RobotVision& vision) {
+  cout << "Need to turn right" << endl;
+  //pthread_mutex_unlock(&stream_mutex);
+  // this_thread::sleep_for(chrono::milliseconds(4000));
+  //pthread_mutex_lock(&stream_mutex);
+  // robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+  moveClockwise(robot);
+  prev_wall_signal = robot.wallSignal();
+  vision.addNewWaypoint(speed);
+  vision.updateDirectionVector(); // Does this need to be 90 or -90?
+  setTurning(false);
+  robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+
+}
+
+void * movementThread(void * args) {
+  RobotSafetyStruct * info = (RobotSafetyStruct *) args;
+  Create robot = *(info->robot);
+
+  bool bump = false;
+
+  pthread_mutex_lock(&stream_mutex);
+  robot.sendDriveCommand (speed, Create::DRIVE_STRAIGHT);
+  cout << "Sent Drive Command" << endl;
+  
+  while(!bump) {
+    bump = robot.bumpRight() || robot.bumpLeft();
+  }
+  //pthread_mutex_lock(&stream_mutex);
+  //setTurning(true);
+  robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
+  // pthread_mutex_unlock(&stream_mutex);
+  this_thread::sleep_for(chrono::milliseconds(200));    
+  // pthread_mutex_lock(&stream_mutex);
+  robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);      
+  //setTurning(false);
+  cout << "Reached Wall" << endl;
+
+  moveCounterClockwise(robot);
+  robot.sendDriveCommand (0, Create::DRIVE_STRAIGHT);
+
+  prev_wall_signal = robot.wallSignal();
+  robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+
+  int loop_counter = 0;
+  int right_turn_counter = 0;
+  RobotVision vision;
+  pthread_mutex_unlock(&stream_mutex);
+  while (true) { 
+    pthread_mutex_lock(&stream_mutex);
+
+    // Need to turn left
+    if(robot.bumpLeft() && robot.bumpRight()) {
+      turnLeft(robot, vision);
+    }
+
+    //Need to turn right
+    if(robot.wallSignal() == 0) {
+      right_turn_counter ++;
+      if(right_turn_counter > 700) {
+	turnRight(robot, vision);
+	right_turn_counter = 0;
+      }
+    }
+    if(loop_counter % correctionCount == 0) {
+      //Straighten out the movement - too close
+      current_wall_signal = robot.wallSignal();
+      cout << prev_wall_signal << " " << current_wall_signal << " " << loop_counter << endl;
+      if(prev_wall_signal - current_wall_signal <= -10) {
+	correctLeft(robot);
+      }
+      else if(robot.bumpRight()) {
+	setTurning(true);
+	robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
+	this_thread::sleep_for(chrono::milliseconds(100));
+	correctLeft(robot);
+      }
+
+      if(prev_wall_signal - current_wall_signal >= 5  || current_wall_signal == 0) {
+	correctRight(robot);
+      }
+    }
+      
+    int local_play = robot.playButton();
+    pthread_mutex_unlock(&stream_mutex);
+    loop_counter ++;
+
+    if(local_play) {
+      vision.drawContourMap();
+      break;	 
+    }
+  }
+  return NULL;
 }
 
 int main (int argc, char** argv)
