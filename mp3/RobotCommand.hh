@@ -6,20 +6,21 @@
 
 class RobotCommand {
 
+  typedef void* (* ComSig)(void*param);
+
 public:
 
   RobotCommand(pthread_mutex_t * stream_mutex);
   ~RobotCommand();
   static void * executeCommands(void * args);
-  void push(void * (*command(void *)));
-  void * (*commmand(void *)) pull();
-
+  void push(ComSig);
+  ComSig pull();
 
 private:
 
   typedef struct queue_node_t {
     struct queue_node_t *next;
-    void * (*command(void *));
+    ComSig command;
   } queue_node_t;
 
   queue_node_t *head, *tail;

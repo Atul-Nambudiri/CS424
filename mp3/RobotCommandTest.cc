@@ -3,9 +3,9 @@
 #include <iostream>
 #include <unistd.h>
 #include "irobot-create.hh"
-#include "RobotCommand"
+#include "RobotCommand.hh"
 
-using namepsace iRobot;
+using namespace iRobot;
 using namespace LibSerial;
 using namespace std;
 
@@ -13,6 +13,7 @@ Create * robot;
 
 void * driveStraight(void * args) {
   robot->sendDriveCommand(100, Create::DRIVE_STRAIGHT);
+  return NULL;
 }
 
 int main(int argc, char** argv) {
