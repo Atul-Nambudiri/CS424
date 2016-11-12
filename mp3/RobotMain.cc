@@ -59,10 +59,9 @@ void moveCounterClockwise(Create& robot){
 
 void moveClockwise(Create& robot){
   setTurning(true);
-  robot.sendDriveCommand(55, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-  robot.sendWaitAngleCommand(20);
+  robot.sendWaitAngleCommand(15);
   // setTurning(false);
-  robot.sendDriveDirectCommand(speed + 90, speed);
+  robot.sendDriveCommand(speed, 305);
   // robot.sendDriveCommand (speed, Create::DRIVE_STRAIGHT);
   while(!robot.bumpLeft() && !robot.bumpRight() && (robot.wallSignal() < 130)) {
     pthread_mutex_unlock(&stream_mutex);
@@ -123,7 +122,7 @@ void turnLeft(Create& robot, RobotVision& vision) {
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
   //pthread_mutex_unlock(&stream_mutex);
-  this_thread::sleep_for(chrono::milliseconds(2000));
+  //this_thread::sleep_for(chrono::milliseconds(2000));
   //pthread_mutex_lock(&stream_mutex);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   moveClockwise(robot);
