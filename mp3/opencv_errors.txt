@@ -1,0 +1,14 @@
+OpenCV Error: Assertion failed (_queryDescriptors.type() == trainDescType) in knnMatchImpl, file /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp, line 726
+exception caught: /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp:726: error: (-215) _queryDescriptors.type() == trainDescType in function knnMatchImpl
+OpenCV Error: Assertion failed (_queryDescriptors.type() == trainDescType) in knnMatchImpl, file /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp, line 726
+exception caught: /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp:726: error: (-215) _queryDescriptors.type() == trainDescType in function knnMatchImpl
+OpenCV Error: Assertion failed (_queryDescriptors.type() == trainDescType) in knnMatchImpl, file /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp, line 726
+exception caught: /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp:726: error: (-215) _queryDescriptors.type() == trainDescType in function knnMatchImpl
+OpenCV Error: Assertion failed (_queryDescriptors.type() == trainDescType) in knnMatchImpl, file /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp, line 726
+exception caught: /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp:726: error: (-215) _queryDescriptors.type() == trainDescType in function knnMatchImpl
+OpenCV Error: Assertion failed (_queryDescriptors.type() == trainDescType) in knnMatchImpl, file /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp, line 726
+exception caught: /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp:726: error: (-215) _queryDescriptors.type() == trainDescType in function knnMatchImpl
+OpenCV Error: Assertion failed (_queryDescriptors.type() == trainDescType) in knnMatchImpl, file /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp, line 726
+exception caught: /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp:726: error: (-215) _queryDescriptors.type() == trainDescType in function knnMatchImpl
+OpenCV Error: Assertion failed (_queryDescriptors.type() == trainDescType) in knnMatchImpl, file /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp, line 726
+exception caught: /home/pi/opencv-3.1.0/modules/features2d/src/matchers.cpp:726: error: (-215) _queryDescriptors.type() == trainDescType in function knnMatchImpl
