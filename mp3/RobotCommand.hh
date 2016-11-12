@@ -2,26 +2,29 @@
 #define ROBOTCOMMAND_HH
 
 #include <pthread.h>
+#include <stdlib.h>
 
 class RobotCommand {
 
 public:
 
-  RobotCommand();
+  RobotCommand(pthread_mutex_t * stream_mutex);
+  ~RobotCommand();
   static void * executeCommands(void * args);
-  void push(void * (*command)(void *));
-  void * (*commmand)(void *) pull();
+  void push(void * (*command(void *)));
+  void * (*commmand(void *)) pull();
 
 
 private:
 
   typedef struct queue_node_t {
     struct queue_node_t *next;
-    void * (*command)(void *);
-  }
+    void * (*command(void *));
+  } queue_node_t;
 
   queue_node_t *head, *tail;
   int size;
+  pthread_mutex_t * s_m;
   pthread_mutex_t m;
   pthread_cond_t cv;
 
