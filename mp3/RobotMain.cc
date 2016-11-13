@@ -23,7 +23,7 @@ int speed_diff = 70; // 70
 int original_extra_angle = 20;
 int current_extra_angle = original_extra_angle;
 bool turning = false;
-int correctionCount = 20000;
+int correctionCount = 5000;
 int current_wall_signal = 0;
 int prev_wall_signal = 0;
 bool stopped = false;
@@ -38,15 +38,14 @@ void setTurning(bool turning1) {
 void moveCounterClockwise(Create& robot){
   int local_prev_wall_signal = robot.wallSignal();
   setTurning(true);
-  robot.sendDriveCommand(30, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  robot.sendDriveCommand(70, Create::DRIVE_INPLACE_COUNTERCLOCKWISE); // 30
   int current_signal = robot.wallSignal();
 
-  while(current_signal > local_prev_wall_signal - 4){ // current_signal > local_prev_wal_signal - 4
-    cout << current_signal << " " << local_prev_wall_signal << endl;
-
+  while(current_signal > local_prev_wall_signal - 6){ // current_signal > local_prev_wal_signal - 4
     local_prev_wall_signal = current_signal;
     current_signal = robot.wallSignal();
   }
+
   setTurning(false);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   cout << "Turned All the way" << endl;
@@ -55,10 +54,12 @@ void moveCounterClockwise(Create& robot){
 
 void moveClockwise(Create& robot){
   setTurning(true);
-  robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_CLOCKWISE);
-  robot.sendWaitAngleCommand(-15);
+
+  //robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  //robot.sendWaitAngleCommand(35);
   // setTurning(false);
-  robot.sendDriveCommand(speed, 305);
+
+  robot.sendDriveCommand(speed, -140);
   // robot.sendDriveCommand (speed, Create::DRIVE_STRAIGHT);
   while(!robot.bumpLeft() && !robot.bumpRight() && (robot.wallSignal() < 130)) {
     pthread_mutex_unlock(&stream_mutex);
@@ -105,7 +106,7 @@ void turnLeft(Create& robot, RobotVision& vision) {
   this_thread::sleep_for(chrono::milliseconds(500)); 
   setTurning(true);
   robot.sendDriveCommand(50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-  robot.sendWaitAngleCommand(75);
+  robot.sendWaitAngleCommand(30);
   setTurning(false);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   vision.addNewWaypoint(speed);
@@ -119,7 +120,7 @@ void turnLeft(Create& robot, RobotVision& vision) {
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
   //pthread_mutex_unlock(&stream_mutex);
-  //this_thread::sleep_for(chrono::milliseconds(2000));
+  this_thread::sleep_for(chrono::milliseconds(1000));
   //pthread_mutex_lock(&stream_mutex);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   moveClockwise(robot);
@@ -128,7 +129,6 @@ void turnRight(Create& robot, RobotVision& vision) {
   vision.updateDirectionVector(); // Does this need to be 90 or -90?
   setTurning(false);
   robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
-
 }
 
 void * mainThread(void * args) {
@@ -150,7 +150,8 @@ void * mainThread(void * args) {
   // pthread_mutex_unlock(&stream_mutex);
   this_thread::sleep_for(chrono::milliseconds(200));    
   // pthread_mutex_lock(&stream_mutex);
-  robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);      
+  robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+
   //setTurning(false);
   cout << "Reached Wall" << endl;
 
@@ -175,27 +176,34 @@ void * mainThread(void * args) {
     //Need to turn right
     if(robot.wallSignal() == 0) {
       right_turn_counter ++;
-      if(right_turn_counter > 1000) {
-	turnRight(robot, vision);
-	right_turn_counter = 0;
+      if(right_turn_counter > 20000) {
+	    turnRight(robot, vision);
+	    right_turn_counter = 0;
       }
+    }
+    else {
+      right_turn_counter = 0;
     }
     if(loop_counter % correctionCount == 0) {
       //Straighten out the movement - too close
       current_wall_signal = robot.wallSignal();
       cout << prev_wall_signal << " " << current_wall_signal << " " << loop_counter << endl;
-      if(prev_wall_signal - current_wall_signal <= -10) {
-	correctLeft(robot);
-      }
-      else if(robot.bumpRight()) {
-	setTurning(true);
-	robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
-	this_thread::sleep_for(chrono::milliseconds(100));
-	correctLeft(robot);
-      }
+      if(current_wall_signal >= 70) {
+        robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+        this_thread::sleep_for(chrono::milliseconds(20));
+        robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT); 
+     }
+      /*else if(robot.bumpRight()) {
+	    setTurning(true);
+	    robot.sendDriveCommand(-80, Create::DRIVE_STRAIGHT);
+	    this_thread::sleep_for(chrono::milliseconds(100));
+	    correctLeft(robot);
+      } */
 
-      if(prev_wall_signal - current_wall_signal >= 5) {
-	correctRight(robot);
+      if(current_wall_signal <= 10) {
+        robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_CLOCKWISE);
+        this_thread::sleep_for(chrono::milliseconds(20));
+        robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT); 
       }
     }
       
