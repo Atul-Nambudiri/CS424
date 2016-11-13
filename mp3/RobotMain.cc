@@ -27,6 +27,7 @@ int correctionCount = 5000;
 int current_wall_signal = 0;
 int prev_wall_signal = 0;
 bool stopped = false;
+bool moving = true;
 
 void setTurning(bool turning1) {
   turning = turning1;
@@ -207,14 +208,18 @@ void * mainThread(void * args) {
     }
       
     int local_play = robot.playButton();
-    pthread_mutex_unlock(&stream_mutex);
     loop_counter ++;
 
     if(local_play) {
       vision.drawContourMap();
+      moving = false;
+      pthread_mutex_unlock(&stream_mutex);
       break;	 
     }
+    pthread_mutex_unlock(&stream_mutex);
   }
+  robot.sendDriveCommand(0, Create::DRIVE_INPLACE_CLOCKWISE);
+  cout << "Done Moving" << endl;
   return NULL;
 }
 
@@ -352,6 +357,7 @@ int main(int argc, char** argv)
       thread_info.turning = &turning;
       thread_info.cv = &condition_wait;
       thread_info.stopped = &stopped;
+      thread_info.moving = &moving;
 
       if (pthread_create(&main_thread, &mainAttr, &mainThread, &thread_info) != 0) {
 	perror("pthread_create main_thread");

@@ -11,10 +11,9 @@ void RobotSafety::stopAndPlaySong(pthread_mutex_t * stream_mutex, Create * robot
         pthread_mutex_unlock(stream_mutex);
 }
 
-void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed, int speed_diff) { //This is never called
+void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed) { //This is never called
         pthread_mutex_lock(stream_mutex);
-        robot->sendDriveDirectCommand(speed + speed_diff, speed);	
-        //robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
+        robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
         pthread_mutex_unlock(stream_mutex);
 }
 
@@ -23,13 +22,16 @@ void * RobotSafety::overcurrent(void * args) {
         pthread_mutex_t * stream_mutex = info->stream_mutex;
         Create * robot = info->robot;
         int speed = info->speed;
-        int speed_diff = info->speed_diff;
         bool * stopped = info->stopped;
+        bool * moving = info->moving;
         pthread_cond_t * cv = info->cv;
 
         bool error = false;
         cout << "Overcurrent Thread Starting" << endl;
-        while (1) {
+        pthread_mutex_lock(&stream_mutex);
+        bool local_moving = &moving;
+        pthread_mutex_unlock(&stream_mutex);
+        while (local_moving) {
                 //Check for overcurrent in either wheel
                 pthread_mutex_lock(stream_mutex);
                 bool left = robot->leftWheelOvercurrent();
@@ -60,8 +62,11 @@ void * RobotSafety::overcurrent(void * args) {
                 } else if (error) {
                         *stopped = false;
                         error = false;
-                        startAgain(stream_mutex, robot, speed, speed_diff);
+                        startAgain(stream_mutex, robot, speed);
                 }
+                pthread_mutex_lock(&stream_mutex);
+                local_moving = &moving;
+                pthread_mutex_unlock(&stream_mutex);
         }
 
         return NULL;
@@ -72,7 +77,6 @@ void * RobotSafety::cliffWheelDrop(void * args) {
         pthread_mutex_t * stream_mutex = info->stream_mutex;
         Create * robot = info->robot;
         int speed = info->speed;
-        int speed_diff = info->speed_diff;
         bool * stopped = info->stopped;
         pthread_cond_t * cv = info->cv;
 
@@ -116,7 +120,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
                 } else if (error) {
                         *stopped = false;
                         error = false;
-                        startAgain(stream_mutex, robot, speed, speed_diff);
+                        startAgain(stream_mutex, robot, speed);
                 }
 
         }

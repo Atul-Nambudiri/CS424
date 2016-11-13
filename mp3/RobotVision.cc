@@ -116,11 +116,14 @@ void * RobotVision::objectIdentification(void * args) {
     int speed = info->speed;
     int speed_diff = info->speed_diff;
     bool * turning = info->turning;
+    bool * moving = info->moving;
     pthread_cond_t *cv = info->cv;
 
-    bool moving = true; //Get this as a global variable
+    pthread_mutex_lock(&stream_mutex);
+    bool local_moving = &moving;
+    pthread_mutex_unlock(&stream_mutex);
     
-    while(moving) {
+    while(local_moving) {
       pthread_mutex_lock(stream_mutex);
       while (*turning) {
         pthread_cond_wait(cv, stream_mutex);
@@ -158,8 +161,10 @@ void * RobotVision::objectIdentification(void * args) {
         }
       }
       image_queue.push(bgr_image);
-      moving = true;
       this_thread::sleep_for(chrono::milliseconds(2000));
+      pthread_mutex_lock(&stream_mutex);
+      local_moving = &moving;
+      pthread_mutex_unlock(&stream_mutex);
     }
     //We are finished with moving. Run the object Identification here.
     identifyAndOutput();
