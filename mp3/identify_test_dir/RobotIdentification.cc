@@ -42,7 +42,7 @@ bool RobotIdentification::runIdentify(Mat& scene_image) {
         if(identify(it->image, scene_image, "./found_image_" + to_string(++objects_found) + ".jpg")) {
             ofstream myfile;
             myfile.open("./found_images.txt", ofstream::out | ofstream::app);
-            myfile << "Found: " << to_string(objects_found) << ": " << << it->name << "\n\n";
+            myfile << "Found: " << to_string(objects_found) << ": " << it->name << "\n\n";
             myfile.close();
             query_images.erase(it);
         }

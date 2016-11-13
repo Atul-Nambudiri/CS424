@@ -28,9 +28,9 @@ void * RobotSafety::overcurrent(void * args) {
 
         bool error = false;
         cout << "Overcurrent Thread Starting" << endl;
-        pthread_mutex_lock(&stream_mutex);
-        bool local_moving = &moving;
-        pthread_mutex_unlock(&stream_mutex);
+        pthread_mutex_lock(stream_mutex);
+        bool local_moving = *moving;
+        pthread_mutex_unlock(stream_mutex);
         while (local_moving) {
                 //Check for overcurrent in either wheel
                 pthread_mutex_lock(stream_mutex);
@@ -64,9 +64,9 @@ void * RobotSafety::overcurrent(void * args) {
                         error = false;
                         startAgain(stream_mutex, robot, speed);
                 }
-                pthread_mutex_lock(&stream_mutex);
-                local_moving = &moving;
-                pthread_mutex_unlock(&stream_mutex);
+                pthread_mutex_lock(stream_mutex);
+                local_moving = *moving;
+                pthread_mutex_unlock(stream_mutex);
         }
 
         return NULL;
@@ -78,6 +78,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
         Create * robot = info->robot;
         int speed = info->speed;
         bool * stopped = info->stopped;
+        bool * moving = info->moving;
         pthread_cond_t * cv = info->cv;
 
         this_thread::sleep_for(chrono::milliseconds(1000)); // So it doens't beep in the beginning
@@ -87,7 +88,10 @@ void * RobotSafety::cliffWheelDrop(void * args) {
         bool error = false;
         cout << "Cliff Thread Starting" << endl;
         cout << "Wheel Drop Thread Starting" << endl;
-        while (1) {
+        pthread_mutex_lock(stream_mutex);
+        bool local_moving = &moving;
+        pthread_mutex_unlock(stream_mutex);
+        while (moving) {
                 pthread_mutex_lock(stream_mutex);
                 short left = robot->cliffLeftSignal();
                 short right = robot->cliffRightSignal();
@@ -122,6 +126,10 @@ void * RobotSafety::cliffWheelDrop(void * args) {
                         error = false;
                         startAgain(stream_mutex, robot, speed);
                 }
+                pthread_mutex_lock(stream_mutex);
+                local_moving = &moving;
+                pthread_mutex_unlock(stream_mutex);
+                
 
         }
         return NULL;

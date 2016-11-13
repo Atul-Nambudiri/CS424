@@ -56,7 +56,6 @@ public:
     static void identifyAndOutput();
     static void * runIdentify(void * args);
     static vector<QueryImage> query_images;
-    static QueryImage * magic_lamp;
     static queue<Mat> image_queue;
     static queue<string> objects_found;
     static bool lamp_found;

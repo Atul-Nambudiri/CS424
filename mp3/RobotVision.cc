@@ -13,7 +13,6 @@ using std::string;
 using std::vector;
 
 vector<QueryImage> RobotVision::query_images;
-QueryImage * RobotVision::magic_lamp;
 queue<Mat> RobotVision::image_queue;
 queue<string> RobotVision::objects_found;
 bool RobotVision::lamp_found = false;
@@ -87,16 +86,19 @@ void * RobotVision::objectIdentification(void * args) {
   DIR *pDIR;
   struct dirent * image;
   string dir = "./query-image/low-resolution";
+  int num = 0;
+  Mat * lamp;
   if(pDIR = opendir(dir.c_str())) {
       while(image = readdir(pDIR)) {
           if(strcmp(image->d_name, ".") != 0 && strcmp(image->d_name, "..") != 0) {
+              cout << dir + "/" + image->d_name << endl;
               Mat image_mat = imread(dir + "/" + image->d_name, IMREAD_GRAYSCALE);
               QueryImage input = {
                 image->d_name,
                 image_mat
               };
               if(strcmp(image->d_name, "magic-lamp-600.jpg") == 0) {
-                magic_lamp = &input;
+                lamp = &image_mat;
               }
               query_images.push_back(input);
           }
@@ -114,14 +116,13 @@ void * RobotVision::objectIdentification(void * args) {
     pthread_mutex_t * stream_mutex = info->stream_mutex;
     Create *robot = info->robot;
     int speed = info->speed;
-    int speed_diff = info->speed_diff;
     bool * turning = info->turning;
     bool * moving = info->moving;
     pthread_cond_t *cv = info->cv;
 
-    pthread_mutex_lock(&stream_mutex);
-    bool local_moving = &moving;
-    pthread_mutex_unlock(&stream_mutex);
+    pthread_mutex_lock(stream_mutex);
+    bool local_moving = *moving;
+    pthread_mutex_unlock(stream_mutex);
     
     while(local_moving) {
       pthread_mutex_lock(stream_mutex);
@@ -130,23 +131,23 @@ void * RobotVision::objectIdentification(void * args) {
       }
 
       robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
-      this_thread::sleep_for(chrono::milliseconds(100));
+      this_thread::sleep_for(chrono::milliseconds(400));
       Camera.grab();
       Camera.retrieve (bgr_image);
       cout << "Retrieved Image" << endl;
 
       //@TODO: Make robot keep moving forward
-      //pthread_mutex_lock(stream_mutex);
       while (*turning) {
         pthread_cond_wait(cv, stream_mutex);
       }
-      robot->sendDriveDirectCommand(speed + speed_diff, speed);
-      //robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
+      robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
       pthread_mutex_unlock(stream_mutex);
 
       cout << "Unlocking" << endl;
       if(!lamp_found) {
-        if(identify(bgr_image, magic_lamp->image, "")) {
+        imwrite("./out/found" + to_string(num) + ".jpg", bgr_image);
+        num ++;
+        if(identify(*lamp, bgr_image, "")) {
           //Stop the robot and disarm the lamp
           pthread_mutex_lock(stream_mutex);
           while (*turning) {
@@ -161,11 +162,13 @@ void * RobotVision::objectIdentification(void * args) {
         }
       }
       image_queue.push(bgr_image);
-      this_thread::sleep_for(chrono::milliseconds(2000));
-      pthread_mutex_lock(&stream_mutex);
-      local_moving = &moving;
-      pthread_mutex_unlock(&stream_mutex);
+      this_thread::sleep_for(chrono::milliseconds(1000));
+      pthread_mutex_lock(stream_mutex);
+      local_moving = *moving;
+      pthread_mutex_unlock(stream_mutex);
+      cout << local_moving << endl;
     }
+    robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);  //In case we pressed the play button before we set the speed
     //We are finished with moving. Run the object Identification here.
     identifyAndOutput();
 
@@ -181,13 +184,14 @@ void * RobotVision::objectIdentification(void * args) {
 }
 
 void RobotVision::identifyAndOutput() {
-  pthread_t workers[4];
-  for(int i = 0; i < 4; i ++) {
+  pthread_t workers[1];
+  for(int i = 0; i < 1; i ++) {
     pthread_create(&workers[i], NULL, &RobotVision::runIdentify, NULL);
   }
-  for(int i = 0; i < 4; i ++) {
+  for(int i = 0; i < 1; i ++) {
     pthread_join(workers[i], NULL);
   }
+  cout << "Done" << endl;
   ofstream myfile;
   myfile.open("./found_images/found_images.txt", ofstream::out | ofstream::app);
   myfile << "Found " << to_string(found_objects_count) << " images\n" << endl;
@@ -204,26 +208,28 @@ void * RobotVision::runIdentify(void * args) {
   while(!empty) {
     Mat scene_image = image_queue.front();
     image_queue.pop();
+    int size = query_images.size();
+    cout << size << endl;
     pthread_mutex_unlock(&identify_mutex);
-    for(std::vector<QueryImage>::iterator it = query_images.begin(); it != query_images.end();) {
+    for(int i = 0; i < size; i ++) {
+      cout << i << endl;
       pthread_mutex_lock(&identify_mutex);
       int local_found_count = found_objects_count;
       pthread_mutex_unlock(&identify_mutex);
-      if(identify(it->image, scene_image, "./found_images/found_image_" + to_string(++local_found_count) + ".jpg")) {
+      if(identify(query_images[i].image, scene_image, "./found_images/found_image_" + to_string(++local_found_count) + ".jpg")) {
           pthread_mutex_lock(&identify_mutex);
-          query_images.erase(it);
           found_objects_count ++;
-          objects_found.push(it->name);
+          objects_found.push(query_images[i].name);
+          query_images.erase(query_images.begin()+i);
+          size --;
           pthread_mutex_unlock(&identify_mutex);
-      }
-      else {
-          it++;
       }
     }
     pthread_mutex_lock(&identify_mutex);
     empty = image_queue.empty();
   }
   pthread_mutex_unlock(&identify_mutex);
+  cout << "No more images" << endl;
   return NULL;
 }
 
@@ -240,7 +246,10 @@ bool RobotVision::identify(Mat& img_query, Mat& scene_image_full, string output_
         // the top 62.5% when camera mounted on front. When camera mounted on the
         // left side its the top 85% that contains useful information.
         cropBottom(scene_image_full, img_scene, 0.85);
-
+        if (strcmp(output_file_name.c_str(), "") != 0) {
+            imwrite("./out/scene.jpg", img_scene);
+            imwrite("./out/full_scene.jpg", scene_image_full);
+        }
         // Detect the keypoints and extract descriptors using SURF
         // Surf keypoint detector and descriptor.
         int minHessian = 100;
@@ -254,9 +263,9 @@ bool RobotVision::identify(Mat& img_query, Mat& scene_image_full, string output_
         Mat descriptors_query, descriptors_scene;
 
         detector->detectAndCompute(
-            img_query, Mat(), keypoints_scene, descriptors_query);
+            img_scene, Mat(), keypoints_scene, descriptors_scene);
         detector->detectAndCompute(
-            img_scene, Mat(), keypoints_query, descriptors_scene);
+            img_query, Mat(), keypoints_query, descriptors_query);
 
         // Matching descriptor vectors using Brute Force matcher
         BFMatcher matcher(NORM_L2);
@@ -334,7 +343,7 @@ bool RobotVision::alignPerspective(vector<Point2f>& query, vector<Point2f>& scen
  // cout << "Scene find Homography" << scene << endl;
 Mat H = findHomography(query, scene, RANSAC);
   if (H.rows == 0 && H.cols == 0) {
-    //cout << "Failed rule0: Empty homography" << endl;
+    cout << "Failed rule0: Empty homography" << endl;
     return false;
   }
 
@@ -374,7 +383,7 @@ Mat H = findHomography(query, scene, RANSAC);
   // Check for convex hull
   if (!(sc_cross[0] < 0 && sc_cross[1] < 0 && sc_cross[2] < 0 && sc_cross[3] < 0)
       && !(sc_cross[0] > 0 && sc_cross[1] > 0 && sc_cross[2] > 0 && sc_cross[3] > 0)) {
-    //cout << "Failed rule1: Not a convex hull" << endl;
+    cout << "Failed rule1: Not a convex hull" << endl;
     return false;
   }
 
@@ -382,10 +391,10 @@ Mat H = findHomography(query, scene, RANSAC);
   // Rule 3: The detected projection can’t have more than 100% area
   float area = (sc_cross[0] + sc_cross[2]) / 2.0;
   if (fabs(area) < min_area) {
-    //cout << "Failed rule2: Projection too small" << endl;
+    cout << "Failed rule2: Projection too small" << endl;
     return false;
   } else if (fabs(area) > max_area) {
-    //cout << "Failed rule3: Projection too large" << endl;
+    cout << "Failed rule3: Projection too large" << endl;
     return false;
   }
 
@@ -398,7 +407,7 @@ Mat H = findHomography(query, scene, RANSAC);
   for (int i = 0; i < 4; i++) {
     float sint = sc_cross[i] / (sc_norm[i] * sc_norm[(i + 1) % 4]);
     if (fabs(sint) < min_angle_sin) {
-      //cout << "Failed rule4: Contains very small angle" << endl;
+      cout << "Failed rule4: Contains very small angle" << endl;
       return false;
     }
   }

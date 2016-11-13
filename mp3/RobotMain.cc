@@ -18,12 +18,10 @@ using namespace std;
 
 pthread_mutex_t stream_mutex;
 pthread_cond_t condition_wait;
-int speed = 200; // 50
-int speed_diff = 70; // 70
-int original_extra_angle = 20;
-int current_extra_angle = original_extra_angle;
+int speed = 140; // 50
 bool turning = false;
-int correctionCount = 5000;
+bool right_turning = false;
+int correctionCount = 2000;
 int current_wall_signal = 0;
 int prev_wall_signal = 0;
 bool stopped = false;
@@ -38,7 +36,6 @@ void setTurning(bool turning1) {
 
 void moveCounterClockwise(Create& robot){
   int local_prev_wall_signal = robot.wallSignal();
-  setTurning(true);
   robot.sendDriveCommand(70, Create::DRIVE_INPLACE_COUNTERCLOCKWISE); // 30
   int current_signal = robot.wallSignal();
 
@@ -47,14 +44,12 @@ void moveCounterClockwise(Create& robot){
     current_signal = robot.wallSignal();
   }
 
-  setTurning(false);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   cout << "Turned All the way" << endl;
 }
 
 
 void moveClockwise(Create& robot){
-  setTurning(true);
   //robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   //robot.sendWaitAngleCommand(35);
   // setTurning(false);
@@ -101,13 +96,12 @@ void correctRight(Create& robot) {
 }
 
 void turnLeft(Create& robot, RobotVision& vision) {
+  setTurning(true);
   cout << "Reached Wall. Need to turn left" << endl;
   robot.sendDriveCommand(-30, Create::DRIVE_STRAIGHT);
   this_thread::sleep_for(chrono::milliseconds(500)); 
-  setTurning(true);
   robot.sendDriveCommand(50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   robot.sendWaitAngleCommand(30);
-  setTurning(false);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   vision.addNewWaypoint(speed);
   moveCounterClockwise(robot);
@@ -115,20 +109,22 @@ void turnLeft(Create& robot, RobotVision& vision) {
   vision.updateDirectionVector(); // Does this need to be 90 or -90?
   robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
   cout << "Done turning left" << endl;
+  setTurning(false);
 }
 
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
-  //pthread_mutex_unlock(&stream_mutex);
-  this_thread::sleep_for(chrono::milliseconds(1000));
-  //pthread_mutex_lock(&stream_mutex);
+  pthread_mutex_unlock(&stream_mutex);
+  this_thread::sleep_for(chrono::milliseconds(500));
+  pthread_mutex_lock(&stream_mutex);
+  setTurning(true);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
   moveClockwise(robot);
   prev_wall_signal = robot.wallSignal();
   vision.addNewWaypoint(speed);
   vision.updateDirectionVector(); // Does this need to be 90 or -90?
-  setTurning(false);
   robot.sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+  setTurning(false);
 }
 
 void * mainThread(void * args) {
@@ -187,7 +183,6 @@ void * mainThread(void * args) {
     if(loop_counter % correctionCount == 0) {
       //Straighten out the movement - too close
       current_wall_signal = robot.wallSignal();
-      cout << prev_wall_signal << " " << current_wall_signal << " " << loop_counter << endl;
       if(current_wall_signal >= 70) {
         robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
         this_thread::sleep_for(chrono::milliseconds(20));
@@ -211,6 +206,7 @@ void * mainThread(void * args) {
     loop_counter ++;
 
     if(local_play) {
+      cout << "Play Pressed" << endl;
       vision.drawContourMap();
       moving = false;
       pthread_mutex_unlock(&stream_mutex);
@@ -351,7 +347,6 @@ int main(int argc, char** argv)
 
       RobotSafetyStruct thread_info;
       thread_info.speed = speed;
-      thread_info.speed_diff = speed_diff;
       thread_info.robot = &robot;
       thread_info.stream_mutex = &stream_mutex;
       thread_info.turning = &turning;
@@ -370,18 +365,18 @@ int main(int argc, char** argv)
       if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
 	perror("pthread_create cliff_wheelDrop_thread");
 	return -1;
-      }
+      }*/
       if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
 	perror("pthread_create objectID_thread");
 	return -1;
       }
-      */
+      
       cout << "After Create" << endl;
       sleep(10);
 
-      pthread_join(overcurrent_thread, NULL);
+      //pthread_join(overcurrent_thread, NULL);
       pthread_join(main_thread, NULL);
-      pthread_join(cliff_wheelDrop_thread, NULL);
+      //pthread_join(cliff_wheelDrop_thread, NULL);
       pthread_join(objectID, NULL);
 
       pthread_attr_destroy(&cliffAttr);
