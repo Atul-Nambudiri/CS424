@@ -54,7 +54,6 @@ void moveCounterClockwise(Create& robot){
 
 void moveClockwise(Create& robot){
   setTurning(true);
-
   //robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   //robot.sendWaitAngleCommand(35);
   // setTurning(false);
