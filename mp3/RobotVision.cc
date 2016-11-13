@@ -87,19 +87,22 @@ void * RobotVision::objectIdentification(void * args) {
   struct dirent * image;
   string dir = "./query-image/low-resolution";
   int num = 0;
-  Mat * lamp;
+  QueryImage lamp;
   if(pDIR = opendir(dir.c_str())) {
       while(image = readdir(pDIR)) {
           if(strcmp(image->d_name, ".") != 0 && strcmp(image->d_name, "..") != 0) {
               cout << dir + "/" + image->d_name << endl;
               Mat image_mat = imread(dir + "/" + image->d_name, IMREAD_GRAYSCALE);
+              if(strcmp(image->d_name, "magic-lamp-600.jpg") == 0) {
+                lamp = {
+                  image->d_name,
+                  image_mat
+                };
+              }
               QueryImage input = {
                 image->d_name,
                 image_mat
               };
-              if(strcmp(image->d_name, "magic-lamp-600.jpg") == 0) {
-                lamp = &image_mat;
-              }
               query_images.push_back(input);
           }
       }
@@ -145,9 +148,8 @@ void * RobotVision::objectIdentification(void * args) {
 
       cout << "Unlocking" << endl;
       if(!lamp_found) {
-        imwrite("./out/found" + to_string(num) + ".jpg", bgr_image);
         num ++;
-        if(identify(*lamp, bgr_image, "")) {
+        if(identify(lamp.image, bgr_image, "")) {
           //Stop the robot and disarm the lamp
           pthread_mutex_lock(stream_mutex);
           while (*turning) {
@@ -184,11 +186,11 @@ void * RobotVision::objectIdentification(void * args) {
 }
 
 void RobotVision::identifyAndOutput() {
-  pthread_t workers[1];
-  for(int i = 0; i < 1; i ++) {
+  pthread_t workers[4];
+  for(int i = 0; i < 4; i ++) {
     pthread_create(&workers[i], NULL, &RobotVision::runIdentify, NULL);
   }
-  for(int i = 0; i < 1; i ++) {
+  for(int i = 0; i < 4; i ++) {
     pthread_join(workers[i], NULL);
   }
   cout << "Done" << endl;
@@ -209,10 +211,8 @@ void * RobotVision::runIdentify(void * args) {
     Mat scene_image = image_queue.front();
     image_queue.pop();
     int size = query_images.size();
-    cout << size << endl;
     pthread_mutex_unlock(&identify_mutex);
     for(int i = 0; i < size; i ++) {
-      cout << i << endl;
       pthread_mutex_lock(&identify_mutex);
       int local_found_count = found_objects_count;
       pthread_mutex_unlock(&identify_mutex);
