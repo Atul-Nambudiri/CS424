@@ -1,9 +1,20 @@
 #ifndef ROBOTVISION_HH
 #define ROBOTVISION_HH
 
+#include <pthread.h>
+
+#include "irobot-create.hh"
+
+using namespace iRobot;
+
 class RobotSensors {
 
 private:
+
+  Create robot;
+  pthread_mutex_t * stream_mutex;
+
+  void updateValues();
 
   bool leftWheelOvercurrent;
   bool rightWheelOvercurrent;
@@ -22,43 +33,28 @@ private:
   bool bumpLeft;
   bool bumpRight;
 
-  void setLeftWheelOvercurrent(bool val);
-  void setrightWheelOvercurrent(bool val);
-
-  void setCliffLeftSignal(short val);
-  void setCliffRightSignal(short val);
-  void setCliffFrontLeftSignal(short val);
-  void setCliffFrontRightSignal(short val);
-
-  void setWheeldropLeft(bool val);
-  void setWheeldropRight(bool val);
-  void setWheeldropCaster(bool val);
-
-  void setAngle(short val);
-  void setWallSignal(short val);
-  void setBumpLeft(bool val);
-  void setBumpRight(bool val);
-
 public:
 
-  RobotSensors(Create robot);
+  RobotSensors(Create r, pthread_mutex_t * s_m) : robot(r), stream_mutex(s_m) {}
 
-  void getLeftWheelOvercurrent(bool val);
-  void getrightWheelOvercurrent(bool val);
+  static void * startUpdateValues(void * args);
 
-  void getCliffLeftSignal(short val);
-  void getCliffRightSignal(short val);
-  void getCliffFrontLeftSignal(short val);
-  void getCliffFrontRightSignal(short val);
+  bool getLeftWheelOvercurrent();
+  bool getrightWheelOvercurrent();
 
-  void getWheeldropLeft(bool val);
-  void getWheeldropRight(bool val);
-  void getWheeldropCaster(bool val);
+  short getCliffLeftSignal();
+  short getCliffRightSignal();
+  short getCliffFrontLeftSignal();
+  short getCliffFrontRightSignal();
 
-  void getAngle(short val);
-  void getWallSignal(short val);
-  void getBumpLeft(bool val);
-  void getBumpRight(bool val);
+  bool getWheeldropLeft();
+  bool getWheeldropRight();
+  bool getWheeldropCaster();
+
+  short getAngle();
+  short getWallSignal();
+  bool getBumpLeft();
+  bool getBumpRight();
 
 };
 
