@@ -2,9 +2,10 @@
 #define ROBOTCOMMAND_HH
 
 #include <pthread.h>
+#include <queue>
 #include <stdlib.h>
 
-typedef void* (* ComSig)(void*param);
+typedef void* (* CommandFunction)(void*param);
 
 class RobotCommand {
 
@@ -19,6 +20,8 @@ public:
   pthread_mutex_t * s_m;
 
 private:
+
+
 
   typedef struct queue_node_t {
     struct queue_node_t *next;
