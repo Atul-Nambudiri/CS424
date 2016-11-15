@@ -1,6 +1,7 @@
 #ifndef ROBOTSAFETY_HH
 #define ROBOTSAFETY_HH
 #include "irobot-create.hh"
+#include "RobotSensors.hh"
 #include <mutex>
 #include <unistd.h>
 #include <pthread.h>

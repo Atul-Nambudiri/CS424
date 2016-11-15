@@ -113,7 +113,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
                         cliffCounter = 0;
                 }
 
-                if (cliffCounter > 10) {
+                if (cliffCounter > 50) {
                         if (cliff) {
                                 cout << "Cliff detected " << endl;
                         } else {
@@ -129,8 +129,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
                 pthread_mutex_lock(stream_mutex);
                 local_moving = &moving;
                 pthread_mutex_unlock(stream_mutex);
-                
-
+                this_thread::sleep_for(chrono::milliseconds(10));
         }
         return NULL;
 }

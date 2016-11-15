@@ -21,7 +21,7 @@ pthread_cond_t condition_wait;
 int speed = 140; // 50
 bool turning = false;
 bool right_turning = false;
-int correctionCount = 2000;
+int correctionCount = 1; // 2000 when by itself works perfect
 int current_wall_signal = 0;
 int prev_wall_signal = 0;
 bool stopped = false;
@@ -39,8 +39,9 @@ void moveCounterClockwise(Create& robot){
   robot.sendDriveCommand(70, Create::DRIVE_INPLACE_COUNTERCLOCKWISE); // 30
   int current_signal = robot.wallSignal();
 
-  while(current_signal > local_prev_wall_signal - 6){ // current_signal > local_prev_wal_signal - 4
+  while(current_signal > local_prev_wall_signal - 10){ // current_signal > local_prev_wal_signal - 4
     local_prev_wall_signal = current_signal;
+    this_thread::sleep_for(chrono::milliseconds(50));
     current_signal = robot.wallSignal();
   }
 
@@ -115,7 +116,7 @@ void turnLeft(Create& robot, RobotVision& vision) {
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
   pthread_mutex_unlock(&stream_mutex);
-  this_thread::sleep_for(chrono::milliseconds(500));
+  this_thread::sleep_for(chrono::milliseconds(1000));
   pthread_mutex_lock(&stream_mutex);
   setTurning(true);
   robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
@@ -172,14 +173,15 @@ void * mainThread(void * args) {
     //Need to turn right
     if(robot.wallSignal() == 0) {
       right_turn_counter ++;
-      if(right_turn_counter > 20000) {
+      //      if(right_turn_counter > 20000) {
 	    turnRight(robot, vision);
 	    right_turn_counter = 0;
-      }
+	    //      }
     }
     else {
       right_turn_counter = 0;
     }
+
     if(loop_counter % correctionCount == 0) {
       //Straighten out the movement - too close
       current_wall_signal = robot.wallSignal();
@@ -314,21 +316,21 @@ int main(int argc, char** argv)
 	perror("attr_getschedparam visionAttr");
       }
         
-      mainParam.sched_priority = 95;
-      OCParam.sched_priority = 10;
-      cliffParam.sched_priority = 5;
-      visionParam.sched_priority = 10;
+      mainParam.sched_priority = 90;
+      OCParam.sched_priority = 18;
+      cliffParam.sched_priority = 20;
+      visionParam.sched_priority = 15;
 
-      if (pthread_attr_setschedpolicy(&mainAttr, SCHED_RR) != 0) {
+      if (pthread_attr_setschedpolicy(&mainAttr, SCHED_FIFO) != 0) {
 	perror("attr_setschedpolicy mainAttr");
       }
-      if (pthread_attr_setschedpolicy(&OCAttr, SCHED_RR) != 0) {
+      if (pthread_attr_setschedpolicy(&OCAttr, SCHED_FIFO) != 0) {
 	perror("attr_setschedpolicy OCAttr");
       }
-      if (pthread_attr_setschedpolicy(&cliffAttr, SCHED_RR) != 0) {
+      if (pthread_attr_setschedpolicy(&cliffAttr, SCHED_FIFO) != 0) {
 	perror("attr_setschedpolicy cliffAttr");
       }
-      if (pthread_attr_setschedpolicy(&visionAttr, SCHED_RR) != 0) {
+      if (pthread_attr_setschedpolicy(&visionAttr, SCHED_FIFO) != 0) {
 	perror("attr_setschedpolicy visionAttr");
       }
 
@@ -357,19 +359,19 @@ int main(int argc, char** argv)
       if (pthread_create(&main_thread, &mainAttr, &mainThread, &thread_info) != 0) {
 	perror("pthread_create main_thread");
 	return -1;
-      }
-      /*      if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
+      }/*
+       if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
 	perror("pthread_create overcurrent_thread");
 	return -1;
-      }
+	}
       if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
 	perror("pthread_create cliff_wheelDrop_thread");
 	return -1;
-      }*/
+	}
       if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
 	perror("pthread_create objectID_thread");
 	return -1;
-      }
+	}*/
       
       cout << "After Create" << endl;
       sleep(10);
