@@ -34,6 +34,9 @@ RobotSensors * sensorCache;
 
 void sig_handler(int signum) {
   timeout = true;
+  pthread_mutex_lock(&stream_mutex);
+  robot->sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
+  pthread_mutex_unlock(&stream_mutex);    
 }
 
 void setTurning(bool turning1) {
