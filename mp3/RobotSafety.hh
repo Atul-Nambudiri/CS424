@@ -18,7 +18,7 @@ typedef struct RobotSafetyStruct {
   bool * turning;
   bool * moving;
   pthread_cond_t * cv;
-  bool * stopped;
+  bool * timeout;
   RobotSensors * sensorCache;
 } RobotSafetyStruct;
 
@@ -28,7 +28,7 @@ class RobotSafety {
 
 public:
 
-  static void stopAndPlaySong(pthread_mutex_t * stream_mutex, Create * robot, bool * stopped);
+  static void stopAndPlaySong(pthread_mutex_t * stream_mutex, Create * robot);
   static void startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed);
   static void * overcurrent(void * args);
   static void * cliffWheelDrop(void * args);
