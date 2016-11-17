@@ -1,17 +1,16 @@
 #include "RobotSafety.hh"
 
-void RobotSafety::stopAndPlaySong(pthread_mutex_t * stream_mutex, Create * robot, bool * stopped) {
+void RobotSafety::stopAndPlaySong(pthread_mutex_t * stream_mutex, Create * robot) {
   //stop robot and play song
   pthread_mutex_lock(stream_mutex);
   robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);			
-  *stopped = true;
   robot->sendPlaySongCommand(0);
   sleep(1);
   robot->sendPlaySongCommand(0);
   pthread_mutex_unlock(stream_mutex);
 }
 
-void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed) { //This is never called
+void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int speed) {
   pthread_mutex_lock(stream_mutex);
   robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
   pthread_mutex_unlock(stream_mutex);
@@ -22,17 +21,14 @@ void * RobotSafety::overcurrent(void * args) {
   pthread_mutex_t * stream_mutex = info->stream_mutex;
   Create * robot = info->robot;
   int speed = info->speed;
-  bool * stopped = info->stopped;
+  bool * timeout = info->timeout;
   bool * moving = info->moving;
   pthread_cond_t * cv = info->cv;
   RobotSensors * sensors = info->sensorCache;
 
   bool error = false;
   cout << "Overcurrent Thread Starting" << endl;
-  /*pthread_mutex_lock(stream_mutex);
-  bool local_moving = *moving;
-  pthread_mutex_unlock(stream_mutex);*/
-  while (1) {
+  while (!timeout) {
     //Check for overcurrent in either wheel
     bool left = sensors->getLeftWheelOvercurrent();
     bool right = sensors->getrightWheelOvercurrent();
@@ -47,21 +43,17 @@ void * RobotSafety::overcurrent(void * args) {
       bool right = sensors->getrightWheelOvercurrent();
 
       if (left && right) {
-	error = true;
+        error = true;
 
-	cout << "overcurrent confirmed" << endl;
+        cout << "overcurrent confirmed" << endl;
 
-	//stop robot and play song
-	stopAndPlaySong(stream_mutex, robot, stopped);
+        //stop robot and play song
+        stopAndPlaySong(stream_mutex, robot);
       }
     } else if (error) {
-      *stopped = false;
       error = false;
       startAgain(stream_mutex, robot, speed);
     }
-    /*pthread_mutex_lock(stream_mutex);
-    local_moving = *moving;
-    pthread_mutex_unlock(stream_mutex);*/
   }
 
   return NULL;
@@ -72,7 +64,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
   pthread_mutex_t * stream_mutex = info->stream_mutex;
   Create * robot = info->robot;
   int speed = info->speed;
-  bool * stopped = info->stopped;
+  bool * timeout = info->timeout;
   bool * moving = info->moving;
   pthread_cond_t * cv = info->cv;
   RobotSensors * sensors = info->sensorCache;
@@ -87,7 +79,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
   pthread_mutex_lock(stream_mutex);
   bool local_moving = &moving;
   pthread_mutex_unlock(stream_mutex);
-  while (moving) {
+  while (moving && !timeout) {
     short left = sensors->getCliffLeftSignal();
     short right = sensors->getCliffRightSignal();
     short frontLeft = sensors->getCliffFrontLeftSignal();
@@ -109,14 +101,13 @@ void * RobotSafety::cliffWheelDrop(void * args) {
 
     if (cliffCounter > 50) {
       if (cliff) {
-	cout << "Cliff detected " << endl;
+	      cout << "Cliff detected " << endl;
       } else {
-	cout << "wheel drop detected" << endl;
+	      cout << "wheel drop detected" << endl;
       }
       error = true;
-      stopAndPlaySong(stream_mutex, robot, stopped);
+      stopAndPlaySong(stream_mutex, robot);
     } else if (error) {
-      *stopped = false;
       error = false;
       startAgain(stream_mutex, robot, speed);
     }

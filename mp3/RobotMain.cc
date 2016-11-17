@@ -7,6 +7,8 @@
 #include <pthread.h>
 #include <mutex>
 #include <vector>
+#include <signal.h>
+#include <string.h>
 #include <raspicam/raspicam_cv.h>
 #include "RobotVision.hh"
 #include "RobotSensors.hh"
@@ -25,10 +27,17 @@ bool right_turning = false;
 int correctionCount = 1; // 2000 when by itself works perfect
 int current_wall_signal = 0;
 int prev_wall_signal = 0;
-bool stopped = false;
+volatile bool timeout = false; /* Need volatile because changed in sig handler */
 bool moving = true;
 
 RobotSensors * sensorCache;
+
+void sig_handler(int signum) {
+  timeout = true;
+  pthread_mutex_lock(&stream_mutex);
+  robot->sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
+  pthread_mutex_unlock(&stream_mutex);    
+}
 
 void setTurning(bool turning1) {
   turning = turning1;
@@ -191,7 +200,7 @@ void * mainThread(void * args) {
     int local_play = sensorCache->getPlayButton();
     loop_counter ++;
 
-    if(local_play) {
+    if(local_play || timeout) {
       cout << "Play Pressed" << endl;
       vision.drawContourMap();
       moving = false;
@@ -213,6 +222,39 @@ int main(int argc, char** argv)
     exit(1);
   }
   char serial_loc[] = "/dev/ttyUSB0";
+
+  //set up signal handler to handle SIGALRM
+  struct sigaction action;
+  memset(&action, 0x00, sizeof (action));
+  action.sa_handler = sig_handler;
+  if (sigaction(SIGALRM, &action, NULL) != 0) {
+    perror("sigaction");
+    return 1;
+  }
+  //setup sig event so timer generates SIGALRM
+  struct sigevent timer_event;
+  memset(&timer_event, 0x00, sizeof (timer_event));
+  timer_event.sigev_notify = SIGEV_SIGNAL;
+  timer_event.sigev_signo = SIGALRM;
+  //create timer
+  timer_t timer;
+  if (timer_create(CLOCK_REALTIME, &timer_event, &timer) != 0) {
+    perror("timer_create");
+    return 1;
+  }
+  //set up timer to go off after 2 minutes, do not repeat
+  struct itimerspec timer_time;
+  struct timespec res;
+  res.tv_sec = (time_t) 115; //stop 5 seconds before 2 minutes
+  res.tv_nsec = 0;
+  timer_time.it_interval = 0; //no repeat
+  timer_time.it_value = res;
+  //schedule timer
+  if (timer_settime(timer, 0, &timer_time, NULL) != 0) {
+    perror("timer_settime");
+    return 1;
+  }
+
 
   try
     {
@@ -353,7 +395,7 @@ int main(int argc, char** argv)
       thread_info.stream_mutex = &stream_mutex;
       thread_info.turning = &turning;
       thread_info.cv = &condition_wait;
-      thread_info.stopped = &stopped;
+      thread_info.timeout = &timeout;
       thread_info.moving = &moving;
       thread_info.sensorCache = sensorCache;
 
