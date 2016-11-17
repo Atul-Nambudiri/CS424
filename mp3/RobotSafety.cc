@@ -21,7 +21,7 @@ void * RobotSafety::overcurrent(void * args) {
   pthread_mutex_t * stream_mutex = info->stream_mutex;
   Create * robot = info->robot;
   int speed = info->speed;
-  bool * timeout = info->timeout;
+  volatile bool * timeout = info->timeout;
   bool * moving = info->moving;
   pthread_cond_t * cv = info->cv;
   RobotSensors * sensors = info->sensorCache;
@@ -64,7 +64,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
   pthread_mutex_t * stream_mutex = info->stream_mutex;
   Create * robot = info->robot;
   int speed = info->speed;
-  bool * timeout = info->timeout;
+  volatile bool * timeout = info->timeout;
   bool * moving = info->moving;
   pthread_cond_t * cv = info->cv;
   RobotSensors * sensors = info->sensorCache;

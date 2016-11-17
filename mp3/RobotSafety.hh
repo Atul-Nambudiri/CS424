@@ -18,7 +18,7 @@ typedef struct RobotSafetyStruct {
   bool * turning;
   bool * moving;
   pthread_cond_t * cv;
-  bool * timeout;
+  volatile bool * timeout;
   RobotSensors * sensorCache;
 } RobotSafetyStruct;
 

@@ -34,9 +34,6 @@ RobotSensors * sensorCache;
 
 void sig_handler(int signum) {
   timeout = true;
-  pthread_mutex_lock(&stream_mutex);
-  robot->sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
-  pthread_mutex_unlock(&stream_mutex);    
 }
 
 void setTurning(bool turning1) {
@@ -64,14 +61,19 @@ void moveCounterClockwise(Create& robot){
   int current_signal = sensorCache->getWallSignal();
 
   setTurning(true);
-  while(current_signal > local_prev_wall_signal - 10){ // current_signal > local_prev_wal_signal - 4
-    local_prev_wall_signal = current_signal;
-    this_thread::sleep_for(chrono::milliseconds(50));
-    current_signal = sensorCache->getWallSignal();
+  cout << "start" << endl;
+  int diff = sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal() - 10);
+  int prevdiff;
+  while(diff > 5){ // current_signal > local_prev_wal_signal - 4
+    prevdiff = diff;
+    diff= sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal() - 10);
+    if (diff != prevdiff) {
+        cout << "difference " << diff << endl;
+    }
   }
-  setTurning(false);
-  
+  cout << "done" << endl;
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
+  setTurning(false);
   cout << "Turned All the way" << endl;
 }
 
@@ -201,6 +203,9 @@ void * mainThread(void * args) {
     loop_counter ++;
 
     if(local_play || timeout) {
+      pthread_mutex_lock(&stream_mutex);
+      robot.sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
+      pthread_mutex_unlock(&stream_mutex);    
       cout << "Play Pressed" << endl;
       vision.drawContourMap();
       moving = false;
@@ -238,22 +243,25 @@ int main(int argc, char** argv)
   timer_event.sigev_signo = SIGALRM;
   //create timer
   timer_t timer;
-  if (timer_create(CLOCK_REALTIME, &timer_event, &timer) != 0) {
+  if (timer_create(CLOCK_MONOTONIC, &timer_event, &timer) != 0) {
     perror("timer_create");
     return 1;
   }
   //set up timer to go off after 2 minutes, do not repeat
   struct itimerspec timer_time;
-  struct timespec res;
-  res.tv_sec = (time_t) 115; //stop 5 seconds before 2 minutes
+  struct timespec res, zero_res;
+  res.tv_sec = (time_t) 20; //stop 5 seconds before 2 minutes
   res.tv_nsec = 0;
-  timer_time.it_interval = 0; //no repeat
+  zero_res.tv_sec = 0;
+  zero_res.tv_nsec = 0;
+  timer_time.it_interval = zero_res; //no repeat
   timer_time.it_value = res;
   //schedule timer
   if (timer_settime(timer, 0, &timer_time, NULL) != 0) {
     perror("timer_settime");
     return 1;
   }
+  cout << "timer started" << endl;
 
 
   try
@@ -354,7 +362,7 @@ int main(int argc, char** argv)
       mainParam.sched_priority = 95;
       OCParam.sched_priority = 18;
       cliffParam.sched_priority = 20;
-      visionParam.sched_priority = 10;
+      visionParam.sched_priority = 1;
       sensorParam.sched_priority = 90;
 
       if (pthread_attr_setschedpolicy(&mainAttr, SCHED_FIFO) != 0) {
@@ -410,11 +418,11 @@ int main(int argc, char** argv)
 	 if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
 	 perror("pthread_create cliff_wheelDrop_thread");
 	 return -1;
-	 } /*
+	 }
 	 if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
 	 perror("pthread_create objectID_thread");
 	 return -1;
-	 } */
+	 }
       pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
       
       cout << "After Create" << endl;
@@ -423,13 +431,13 @@ int main(int argc, char** argv)
       pthread_join(overcurrent_thread, NULL);
       pthread_join(main_thread, NULL);
       pthread_join(cliff_wheelDrop_thread, NULL);
-//      pthread_join(objectID, NULL);
+      pthread_join(objectID, NULL);
 
       pthread_attr_destroy(&cliffAttr);
       pthread_attr_destroy(&visionAttr);
       pthread_attr_destroy(&OCAttr);
       pthread_attr_destroy(&mainAttr);
-      robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+      //robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
     }   
   catch (InvalidArgument& e)
     {

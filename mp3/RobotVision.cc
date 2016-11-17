@@ -37,7 +37,7 @@ void RobotVision::updateDirectionVector(float rotationAngle){
 }
 
 void RobotVision::addNewWaypoint(int robotSpeed){
-    cout << "End add waypoint" << endl;
+    cout << "Begin add waypoint" << endl;
     time_t now = time(NULL);
     time_t travelTime = now - this->prevWaypointTime;   
     float distance = robotSpeed * (float) travelTime;
@@ -46,7 +46,7 @@ void RobotVision::addNewWaypoint(int robotSpeed){
 	this->currWaypoint.y += distance*this->directionVector.y;
     this->waypoints.push_back(this->currWaypoint);
     this->prevWaypointTime = now;
-    cout << "Begin add waypoint" << endl;
+    cout << "End add waypoint" << endl;
 }
 
 void RobotVision::drawContourMap(){
@@ -129,9 +129,12 @@ void * RobotVision::objectIdentification(void * args) {
     
     while(local_moving) {
       pthread_mutex_lock(stream_mutex);
+      cout << "locked" << endl;
       while (*turning) {
+        cout << "waiting for turn" << endl;
         pthread_cond_wait(cv, stream_mutex);
       }
+      cout << "done waiting for turn" << endl;
 
       robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
       this_thread::sleep_for(chrono::milliseconds(400));
@@ -168,7 +171,7 @@ void * RobotVision::objectIdentification(void * args) {
       pthread_mutex_lock(stream_mutex);
       local_moving = *moving;
       pthread_mutex_unlock(stream_mutex);
-      cout << local_moving << endl;
+      cout << "local_moving: " << local_moving << endl;
     }
     robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);  //In case we pressed the play button before we set the speed
     //We are finished with moving. Run the object Identification here.
@@ -186,6 +189,8 @@ void * RobotVision::objectIdentification(void * args) {
 }
 
 void RobotVision::identifyAndOutput() {
+  cout << "no seg " << endl;
+  pthread_mutex_init(&identify_mutex, NULL);
   pthread_t workers[4];
   for(int i = 0; i < 4; i ++) {
     pthread_create(&workers[i], NULL, &RobotVision::runIdentify, NULL);

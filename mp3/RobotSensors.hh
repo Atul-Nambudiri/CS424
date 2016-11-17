@@ -26,6 +26,7 @@ public:
   bool getWheeldropCaster();
 
   short getAngle();
+  short getPrevWallSignal();
   short getWallSignal();
   short getPlayButton();
 
@@ -54,6 +55,7 @@ private:
   volatile bool wheeldropCaster;
 
   volatile short wallSignal;
+  volatile short prevWallSignal;
   volatile short playButton;
   volatile bool bumpLeft;
   volatile bool bumpRight;

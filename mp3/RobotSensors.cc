@@ -25,6 +25,7 @@ void RobotSensors::updateValues() {
     wheeldropRight = robot.wheeldropRight();
     wheeldropCaster = robot.wheeldropCaster();
 
+    prevWallSignal = wallSignal;
     wallSignal = robot.wallSignal();
     bumpLeft = robot.bumpLeft();
     bumpRight = robot.bumpRight();   
@@ -70,6 +71,10 @@ short RobotSensors::getAngle() { // Doesn't work with mutex locks
   short angle = robot.angle();
   pthread_mutex_unlock(stream_mutex);
   return angle;
+}
+
+short RobotSensors::getPrevWallSignal() {
+    return prevWallSignal;
 }
 short RobotSensors::getWallSignal() {
   return wallSignal;
