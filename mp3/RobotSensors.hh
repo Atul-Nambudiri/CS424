@@ -34,6 +34,7 @@ public:
 
   static void * startUpdateValues(void * args);
   void updateValues();
+  void beginCalculatingAngle();
 
 private:
 
@@ -52,7 +53,6 @@ private:
   volatile bool wheeldropRight;
   volatile bool wheeldropCaster;
 
-  volatile short angle;
   volatile short wallSignal;
   volatile short playButton;
   volatile bool bumpLeft;

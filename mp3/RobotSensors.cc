@@ -25,7 +25,6 @@ void RobotSensors::updateValues() {
     wheeldropRight = robot.wheeldropRight();
     wheeldropCaster = robot.wheeldropCaster();
 
-    angle = robot.angle();
     wallSignal = robot.wallSignal();
     bumpLeft = robot.bumpLeft();
     bumpRight = robot.bumpRight();   
@@ -67,6 +66,9 @@ bool RobotSensors::getWheeldropCaster() {
 }
 
 short RobotSensors::getAngle() {
+  pthread_mutex_lock(&stream_mutex);
+  short angle = robot.angle();
+  pthread_mutex_unlock(&stream_mutex);
   return angle;
 }
 short RobotSensors::getWallSignal() {
@@ -80,4 +82,9 @@ bool RobotSensors::getBumpRight() {
 }
 short RobotSensors::getPlayButton(){
     return playButton;
+}
+void beginCalculatingAngle(){
+    pthread_mutex_lock(&stream_mutex);
+    robot.angle();
+    pthread_mutex_unlock(&stream_mutex);
 }

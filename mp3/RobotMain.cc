@@ -108,6 +108,7 @@ void setRobotTurnAngle(Create& robot, short angle){
 void turnLeft(Create& robot, RobotVision& vision) {
   setTurning(true);
   cout << "Reached Wall. Need to turn left" << endl;
+  sensorCache->beginCalculatingAngle();
   moveRobot(robot, -30, Create::DRIVE_STRAIGHT);
   this_thread::sleep_for(chrono::milliseconds(500)); 
   moveRobot(robot, 50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
@@ -116,7 +117,7 @@ void turnLeft(Create& robot, RobotVision& vision) {
   vision.addNewWaypoint(speed);
   moveCounterClockwise(robot);
   prev_wall_signal = sensorCache->getWallSignal();
-  vision.updateDirectionVector(); // Does this need to be 90 or -90?
+  vision.updateDirectionVector(sensorCache->getAngle()); // Does this need to be 90 or -90?
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   cout << "Done turning left" << endl;
   setTurning(false);
@@ -124,6 +125,7 @@ void turnLeft(Create& robot, RobotVision& vision) {
 
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
+  sensorCache->beginCalculatingAngle();
   this_thread::sleep_for(chrono::milliseconds(1000));
   setTurning(true);
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
@@ -131,7 +133,7 @@ void turnRight(Create& robot, RobotVision& vision) {
   moveClockwise(robot);
   //  prev_wall_signal = robot.wallSignal();
   vision.addNewWaypoint(speed);
-  vision.updateDirectionVector(); // Does this need to be 90 or -90?
+  vision.updateDirectionVector(sensorCache->getAngle()); // Does this need to be 90 or -90?
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   setTurning(false);
 }
