@@ -83,7 +83,7 @@ bool RobotSensors::getBumpRight() {
 short RobotSensors::getPlayButton(){
     return playButton;
 }
-void beginCalculatingAngle(){
+void RobotSensors::beginCalculatingAngle(){
     pthread_mutex_lock(&stream_mutex);
     robot.angle();
     pthread_mutex_unlock(&stream_mutex);
