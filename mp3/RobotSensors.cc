@@ -65,10 +65,10 @@ bool RobotSensors::getWheeldropCaster() {
   return wheeldropCaster;
 }
 
-short RobotSensors::getAngle() {
-  pthread_mutex_lock(&stream_mutex);
+short RobotSensors::getAngle() { // Doesn't work with mutex locks
+  pthread_mutex_lock(stream_mutex);
   short angle = robot.angle();
-  pthread_mutex_unlock(&stream_mutex);
+  pthread_mutex_unlock(stream_mutex);
   return angle;
 }
 short RobotSensors::getWallSignal() {
@@ -84,7 +84,7 @@ short RobotSensors::getPlayButton(){
     return playButton;
 }
 void RobotSensors::beginCalculatingAngle(){
-    pthread_mutex_lock(&stream_mutex);
+    pthread_mutex_lock(stream_mutex);
     robot.angle();
-    pthread_mutex_unlock(&stream_mutex);
+    pthread_mutex_unlock(stream_mutex);
 }

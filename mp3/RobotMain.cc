@@ -108,7 +108,7 @@ void setRobotTurnAngle(Create& robot, short angle){
 void turnLeft(Create& robot, RobotVision& vision) {
   setTurning(true);
   cout << "Reached Wall. Need to turn left" << endl;
-  sensorCache->beginCalculatingAngle();
+  //sensorCache->beginCalculatingAngle();
   moveRobot(robot, -30, Create::DRIVE_STRAIGHT);
   this_thread::sleep_for(chrono::milliseconds(500)); 
   moveRobot(robot, 50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
@@ -125,15 +125,15 @@ void turnLeft(Create& robot, RobotVision& vision) {
 
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
-  sensorCache->beginCalculatingAngle();
+  //sensorCache->beginCalculatingAngle();
   this_thread::sleep_for(chrono::milliseconds(1000));
   setTurning(true);
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
-  //pthread_mutex_unlock(&steam_mutex);
+
   moveClockwise(robot);
   //  prev_wall_signal = robot.wallSignal();
   vision.addNewWaypoint(speed);
-  vision.updateDirectionVector(sensorCache->getAngle()); // Does this need to be 90 or -90?
+  //vision.updateDirectionVector(sensorCache->getAngle()); // Does this need to be 90 or -90?
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   setTurning(false);
 }
@@ -374,11 +374,11 @@ int main(int argc, char** argv)
       if (pthread_create(&main_thread, &mainAttr, &mainThread, &thread_info) != 0) {
 	perror("pthread_create main_thread");
 	return -1;
-      }/*
+      }
 	 if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
 	 perror("pthread_create overcurrent_thread");
 	 return -1;
-	 }*/
+	 }
 	 if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
 	 perror("pthread_create cliff_wheelDrop_thread");
 	 return -1;
