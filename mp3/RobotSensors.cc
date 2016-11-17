@@ -1,13 +1,15 @@
 #include "RobotSensors.hh"
+#include <chrono>
+#include <thread>
 
-void * startUpdateValues(void * args) {
+void * RobotSensors::startUpdateValues(void * args) {
   RobotSensors * sensors = (RobotSensors*) args;
   sensors->updateValues();
   //does not return
   return NULL;
 }
 
-void updateValues() {
+void RobotSensors::updateValues() {
   while (1) {
     pthread_mutex_lock(stream_mutex);
 
@@ -26,52 +28,56 @@ void updateValues() {
     angle = robot.angle();
     wallSignal = robot.wallSignal();
     bumpLeft = robot.bumpLeft();
-    bumpRight = robot.bumpRight();
+    bumpRight = robot.bumpRight();   
+    playButton = robot.playButton();
 
     pthread_mutex_unlock(stream_mutex);
-    //sleep?
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 }
 
-bool getLeftWheelOvercurrent() {
+bool RobotSensors::getLeftWheelOvercurrent() {
   return leftWheelOvercurrent;
 }
-bool getrightWheelOvercurrent() {
+bool RobotSensors::getrightWheelOvercurrent() {
   return rightWheelOvercurrent;
 }
 
-short getCliffLeftSignal() {
+short RobotSensors::getCliffLeftSignal() {
   return cliffLeftSignal;
 }
-short getCliffRightSignal() {
+short RobotSensors::getCliffRightSignal() {
   return cliffRightSignal;
 }
-short getCliffFrontLeftSignal() {
+short RobotSensors::getCliffFrontLeftSignal() {
   return cliffFrontLeftSignal;
 }
-short getCliffFrontRightSignal() {
+short RobotSensors::getCliffFrontRightSignal() {
   return cliffFrontRightSignal;
 }
 
-bool getWheeldropLeft() {
+bool RobotSensors::getWheeldropLeft() {
   return wheeldropLeft;
 }
-bool getWheeldropRight() {
+bool RobotSensors::getWheeldropRight() {
   return wheeldropRight;
 }
-bool getWheeldropCaster() {
+bool RobotSensors::getWheeldropCaster() {
   return wheeldropCaster;
 }
 
-short getAngle() {
+short RobotSensors::getAngle() {
   return angle;
 }
-short getWallSignal() {
+short RobotSensors::getWallSignal() {
   return wallSignal;
 }
-bool getBumpLeft() {
+bool RobotSensors::getBumpLeft() {
   return bumpLeft;
 }
-bool getBumpRight() {
+bool RobotSensors::getBumpRight() {
   return bumpRight;
+}
+short RobotSensors::getPlayButton(){
+    return playButton;
 }

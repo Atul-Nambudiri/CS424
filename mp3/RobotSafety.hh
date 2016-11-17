@@ -19,6 +19,7 @@ typedef struct RobotSafetyStruct {
   bool * moving;
   pthread_cond_t * cv;
   bool * stopped;
+  RobotSensors * sensorCache;
 } RobotSafetyStruct;
 
 class RobotSafety {

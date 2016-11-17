@@ -1,5 +1,5 @@
-#ifndef ROBOTVISION_HH
-#define ROBOTVISION_HH
+#ifndef ROBOTSENSORS_HH
+#define ROBOTSENSORS_HH
 
 #include <pthread.h>
 
@@ -9,35 +9,9 @@ using namespace iRobot;
 
 class RobotSensors {
 
-private:
-
-  Create robot;
-  pthread_mutex_t * stream_mutex;
-
-  void updateValues();
-
-  bool leftWheelOvercurrent;
-  bool rightWheelOvercurrent;
-
-  short cliffLeftSignal;
-  short cliffRightSignal;
-  short cliffFrontLeftSignal;
-  short cliffFrontRightSignal;
-
-  bool wheeldropLeft;
-  bool wheeldropRight;
-  bool wheeldropCaster;
-
-  short angle;
-  short wallSignal;
-  bool bumpLeft;
-  bool bumpRight;
-
 public:
 
   RobotSensors(Create r, pthread_mutex_t * s_m) : robot(r), stream_mutex(s_m) {}
-
-  static void * startUpdateValues(void * args);
 
   bool getLeftWheelOvercurrent();
   bool getrightWheelOvercurrent();
@@ -46,16 +20,44 @@ public:
   short getCliffRightSignal();
   short getCliffFrontLeftSignal();
   short getCliffFrontRightSignal();
-
+  
   bool getWheeldropLeft();
   bool getWheeldropRight();
   bool getWheeldropCaster();
 
   short getAngle();
   short getWallSignal();
+  short getPlayButton();
+
   bool getBumpLeft();
   bool getBumpRight();
 
+  static void * startUpdateValues(void * args);
+  void updateValues();
+
+private:
+
+  Create robot;
+  pthread_mutex_t * stream_mutex;
+
+  volatile bool leftWheelOvercurrent;
+  volatile bool rightWheelOvercurrent;
+
+  volatile short cliffLeftSignal;
+  volatile short cliffRightSignal;
+  volatile short cliffFrontLeftSignal;
+  volatile short cliffFrontRightSignal;
+
+  volatile bool wheeldropLeft;
+  volatile bool wheeldropRight;
+  volatile bool wheeldropCaster;
+
+  volatile short angle;
+  volatile short wallSignal;
+  volatile short playButton;
+  volatile bool bumpLeft;
+  volatile bool bumpRight;
+    
 };
 
 #endif

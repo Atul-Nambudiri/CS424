@@ -80,7 +80,8 @@ void * RobotSafety::cliffWheelDrop(void * args) {
         bool * stopped = info->stopped;
         bool * moving = info->moving;
         pthread_cond_t * cv = info->cv;
-
+	RobotSensors * sensors = info->sensorCache;
+	
         this_thread::sleep_for(chrono::milliseconds(1000)); // So it doens't beep in the beginning
 
         int cliffCounter = 0;
@@ -92,15 +93,13 @@ void * RobotSafety::cliffWheelDrop(void * args) {
         bool local_moving = &moving;
         pthread_mutex_unlock(stream_mutex);
         while (moving) {
-                pthread_mutex_lock(stream_mutex);
-                short left = robot->cliffLeftSignal();
-                short right = robot->cliffRightSignal();
-                short frontLeft = robot->cliffFrontLeftSignal();
-                short frontRight = robot->cliffFrontRightSignal();
-                bool leftWheel = robot->wheeldropLeft();
-                bool rightWheel = robot->wheeldropRight();
-                bool caster = robot->wheeldropCaster();
-                pthread_mutex_unlock(stream_mutex);
+	  short left = sensors->getCliffLeftSignal();
+	  short right = sensors->getCliffRightSignal();
+	  short frontLeft = sensors->getCliffFrontLeftSignal();
+	  short frontRight = sensors->getCliffFrontRightSignal();
+	  bool leftWheel = sensors->getWheeldropLeft();
+	  bool rightWheel = sensors->getWheeldropRight();
+	  bool caster = sensors->getWheeldropCaster();
 
                 bool cliff = (left == 0 && right == 0) || (frontLeft == 0 && frontRight == 0);
                 bool wheelDrop = leftWheel || rightWheel || caster;
@@ -129,7 +128,6 @@ void * RobotSafety::cliffWheelDrop(void * args) {
                 pthread_mutex_lock(stream_mutex);
                 local_moving = &moving;
                 pthread_mutex_unlock(stream_mutex);
-                this_thread::sleep_for(chrono::milliseconds(10));
         }
         return NULL;
 }
