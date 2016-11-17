@@ -36,11 +36,13 @@ void setTurning(bool turning1) {
     pthread_cond_broadcast(&condition_wait);
   }
 }
+
 void moveRobot(Create & robot, short v, short r){
   pthread_mutex_lock(&stream_mutex);
   robot.sendDriveCommand(v,r);
   pthread_mutex_unlock(&stream_mutex);
 }
+
 void moveRobot(Create& robot, short v, Create::DriveCommand dc){
   pthread_mutex_lock(&stream_mutex);
   robot.sendDriveCommand(v, dc);
@@ -52,12 +54,14 @@ void moveCounterClockwise(Create& robot){
   moveRobot(robot, 70, Create::DRIVE_INPLACE_COUNTERCLOCKWISE); // 30
   int current_signal = sensorCache->getWallSignal();
 
+  setTurning(true);
   while(current_signal > local_prev_wall_signal - 10){ // current_signal > local_prev_wal_signal - 4
     local_prev_wall_signal = current_signal;
     this_thread::sleep_for(chrono::milliseconds(50));
     current_signal = sensorCache->getWallSignal();
   }
-
+  setTurning(false);
+  
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
   cout << "Turned All the way" << endl;
 }
@@ -65,8 +69,9 @@ void moveCounterClockwise(Create& robot){
 void moveClockwise(Create& robot){
   //robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   //robot.sendWaitAngleCommand(35);
-  //setTurning(false);
+  setTurning(true);
   moveRobot(robot, speed, -140);
+  setTurning(true);
   // robot.sendDriveCommand (speed, Create::DRIVE_STRAIGHT);
   while(!sensorCache->getBumpLeft() && !sensorCache->getBumpRight() && (sensorCache->getWallSignal() < 130)) {}
   moveRobot(robot, -60, Create::DRIVE_STRAIGHT);
@@ -78,40 +83,21 @@ void moveClockwise(Create& robot){
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT); 
 }
 
-void correctLeft(Create& robot) {
-  cout << "Correcting Route - Too Close" << endl;
-  setTurning(true);
-  moveRobot(robot, speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-  while(prev_wall_signal - current_wall_signal <= -2) {
-    current_wall_signal = sensorCache->getWallSignal();
-  }
-  setTurning(false);
-  moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
-}
-
-void correctRight(Create& robot) {
-  cout << "Correcting Route - Too far" << endl;
-  setTurning(true);
-  moveRobot(robot, speed, Create::DRIVE_INPLACE_CLOCKWISE);
-  while(prev_wall_signal - current_wall_signal >= 2 && current_wall_signal != 0) {
-    current_wall_signal = sensorCache->getWallSignal(); 
-  }
-  setTurning(false);
-  moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
-}
-
 void setRobotTurnAngle(Create& robot, short angle){
   pthread_mutex_lock(&stream_mutex);
   robot.sendWaitAngleCommand(angle);
   pthread_mutex_unlock(&stream_mutex);
 }
+
 void turnLeft(Create& robot, RobotVision& vision) {
   setTurning(true);
   cout << "Reached Wall. Need to turn left" << endl;
-  //sensorCache->beginCalculatingAngle();
+  sensorCache->beginCalculatingAngle();
   moveRobot(robot, -30, Create::DRIVE_STRAIGHT);
-  this_thread::sleep_for(chrono::milliseconds(500)); 
+  this_thread::sleep_for(chrono::milliseconds(500));
+  setTurning(true);
   moveRobot(robot, 50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  setTurning(false);
   setRobotTurnAngle(robot, 30);
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
   vision.addNewWaypoint(speed);
@@ -125,7 +111,7 @@ void turnLeft(Create& robot, RobotVision& vision) {
 
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
-  //sensorCache->beginCalculatingAngle();
+  sensorCache->beginCalculatingAngle();
   this_thread::sleep_for(chrono::milliseconds(1000));
   setTurning(true);
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
@@ -178,7 +164,7 @@ void * mainThread(void * args) {
     //Need to turn right
     if(sensorCache->getWallSignal() == 0) {
       right_turn_counter ++;
-      //if(right_turn_counter > 20000) {
+      //if(right_turn_counter > 20000) { // Took if statement out because it will just do correction around corner
         turnRight(robot, vision);
         right_turn_counter = 0;
 	//}
@@ -326,7 +312,7 @@ int main(int argc, char** argv)
       mainParam.sched_priority = 95;
       OCParam.sched_priority = 18;
       cliffParam.sched_priority = 20;
-      visionParam.sched_priority = 15;
+      visionParam.sched_priority = 10;
       sensorParam.sched_priority = 90;
 
       if (pthread_attr_setschedpolicy(&mainAttr, SCHED_FIFO) != 0) {
@@ -382,20 +368,20 @@ int main(int argc, char** argv)
 	 if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
 	 perror("pthread_create cliff_wheelDrop_thread");
 	 return -1;
-	 }/*
+	 } /*
 	 if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
 	 perror("pthread_create objectID_thread");
 	 return -1;
-	 }*/
+	 } */
       pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
       
       cout << "After Create" << endl;
       sleep(10);
 
-      //pthread_join(overcurrent_thread, NULL);
+      pthread_join(overcurrent_thread, NULL);
       pthread_join(main_thread, NULL);
-      //pthread_join(cliff_wheelDrop_thread, NULL);
-      pthread_join(objectID, NULL);
+      pthread_join(cliff_wheelDrop_thread, NULL);
+//      pthread_join(objectID, NULL);
 
       pthread_attr_destroy(&cliffAttr);
       pthread_attr_destroy(&visionAttr);
