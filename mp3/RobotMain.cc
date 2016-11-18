@@ -68,7 +68,7 @@ void moveCounterClockwise(Create& robot){
     prevdiff = diff;
     diff= sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal() - 10);
     if (diff != prevdiff) {
-        cout << "difference " << diff << endl;
+      //cout << "difference " << diff << endl;
     }
   }
   cout << "done" << endl;
@@ -114,7 +114,9 @@ void turnLeft(Create& robot, RobotVision& vision) {
   vision.addNewWaypoint(speed);
   moveCounterClockwise(robot);
   prev_wall_signal = sensorCache->getWallSignal();
-  vision.updateDirectionVector(sensorCache->getAngle()); // Does this need to be 90 or -90?
+  int angle = sensorCache->getAngle();
+  cout << "angle: " << angle;
+  vision.updateDirectionVector(angle); // Does this need to be 90 or -90?
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   cout << "Done turning left" << endl;
   setTurning(false);
@@ -130,7 +132,9 @@ void turnRight(Create& robot, RobotVision& vision) {
   moveClockwise(robot);
   //  prev_wall_signal = robot.wallSignal();
   vision.addNewWaypoint(speed);
-  //vision.updateDirectionVector(sensorCache->getAngle()); // Does this need to be 90 or -90?
+  int angle = sensorCache->getAngle();
+  cout << "angle : " << angle;
+  vision.updateDirectionVector(angle); // Does this need to be 90 or -90?
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   setTurning(false);
 }
@@ -250,7 +254,7 @@ int main(int argc, char** argv)
   //set up timer to go off after 2 minutes, do not repeat
   struct itimerspec timer_time;
   struct timespec res, zero_res;
-  res.tv_sec = (time_t) 20; //stop 5 seconds before 2 minutes
+  res.tv_sec = (time_t) 200; //stop 5 seconds before 2 minutes
   res.tv_nsec = 0;
   zero_res.tv_sec = 0;
   zero_res.tv_nsec = 0;
@@ -295,6 +299,7 @@ int main(int argc, char** argv)
       sensors.push_back(Create::SENSOR_CLIFF_FRONT_RIGHT_SIGNAL);
       sensors.push_back(Create::SENSOR_CLIFF_RIGHT_SIGNAL);
       sensors.push_back (Create::SENSOR_BUTTONS);
+      sensors.push_back(Create::SENSOR_ANGLE);
       //sensors.push_back(Create::SENSOR_GROUP_0);
       //sensors.push_back(Create::SENSOR_GROUP_3);
 
@@ -410,7 +415,7 @@ int main(int argc, char** argv)
       if (pthread_create(&main_thread, &mainAttr, &mainThread, &thread_info) != 0) {
 	perror("pthread_create main_thread");
 	return -1;
-      }
+      }/*
 	 if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
 	 perror("pthread_create overcurrent_thread");
 	 return -1;
@@ -418,18 +423,18 @@ int main(int argc, char** argv)
 	 if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
 	 perror("pthread_create cliff_wheelDrop_thread");
 	 return -1;
-	 }
+	 }/*
 	 if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
 	 perror("pthread_create objectID_thread");
 	 return -1;
-	 }
+	 }*/
       pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
       
       cout << "After Create" << endl;
       sleep(10);
 
-      pthread_join(overcurrent_thread, NULL);
       pthread_join(main_thread, NULL);
+      pthread_join(overcurrent_thread, NULL);
       pthread_join(cliff_wheelDrop_thread, NULL);
       pthread_join(objectID, NULL);
 
