@@ -82,7 +82,7 @@ void moveCounterClockwise(Create& robot){
   cout << "Turned All the way" << endl;
 }
 
-void turnLeft(Create& robot, RobotVision& vision) {
+void turnLeft(Create& robot) {
   setTurning(true);
   cout << "Reached Wall. Need to turn left" << endl;
   sensorCache->beginCalculatingAngle();
@@ -93,12 +93,10 @@ void turnLeft(Create& robot, RobotVision& vision) {
   setTurning(false);
   setRobotTurnAngle(robot, 30);
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
-  vision.addNewWaypoint(speed);
   moveCounterClockwise(robot);
   prev_wall_signal = sensorCache->getWallSignal();
   int angle = sensorCache->getAngle();
   cout << "angle: " << angle;
-  vision.updateDirectionVector(angle); // Does this need to be 90 or -90?
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   cout << "Done turning left" << endl;
   setTurning(false);
@@ -126,7 +124,6 @@ void * mainThread(void * args) {
   
   // int loop_counter = 0;
   // int right_turn_counter = 0;
-  // RobotVision vision;
   // while (true) {
 
   //   if(loop_counter % correctionCount == 0) {
@@ -152,7 +149,6 @@ void * mainThread(void * args) {
   //     robot.sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
   //     pthread_mutex_unlock(&stream_mutex);    
   //     cout << "Play Pressed" << endl;
-  //     vision.drawContourMap();
   //     moving = false;
   //     break;	 
   //   }
@@ -249,8 +245,8 @@ int main(int argc, char** argv)
 
     //Start the Robot safety threads
     pthread_t overcurrent_thread, cliff_wheelDrop_thread, objectID, main_thread, sensor_thread;
-    pthread_attr_t cliffAttr, mainAttr, visionAttr, OCAttr, sensorAttr;
-    struct sched_param cliffParam, mainParam, visionParam, OCParam, sensorParam;
+    pthread_attr_t cliffAttr, mainAttr, OCAttr, sensorAttr;
+    struct sched_param cliffParam, mainParam, OCParam, sensorParam;
  
     if (pthread_attr_init(&cliffAttr) != 0) {
       perror("attr_init cliffAttr");
