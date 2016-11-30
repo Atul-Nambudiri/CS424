@@ -109,54 +109,57 @@ void turnLeft(Create& robot, RobotVision& vision) {
 void * mainThread(void * args) {
   RobotSafetyStruct * info = (RobotSafetyStruct *) args;
   Create robot = *(info->robot);
-  this_thread::sleep_for(chrono::milliseconds(1000));
-  bool bump = false;
-  moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
-  cout << "Sent Drive Command" << endl;
-  while(!bump) {
-    bump = sensorCache->getBumpRight() || sensorCache->getBumpLeft();
-  }
-  moveRobot(robot, -80, Create::DRIVE_STRAIGHT);
-  this_thread::sleep_for(chrono::milliseconds(200));    
-  moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
-  cout << "Reached Wall" << endl;
-  moveCounterClockwise(robot);
-  moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
-  prev_wall_signal = sensorCache->getWallSignal();
-  moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
+  // this_thread::sleep_for(chrono::milliseconds(1000));
+  // bool bump = false;
+  // moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
+  // cout << "Sent Drive Command" << endl;
+  // while(!bump) {
+  //   bump = sensorCache->getBumpRight() || sensorCache->getBumpLeft();
+  // }
+  // moveRobot(robot, -80, Create::DRIVE_STRAIGHT);
+  // this_thread::sleep_for(chrono::milliseconds(200));    
+  // moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
+  // cout << "Reached Wall" << endl;
+  // moveCounterClockwise(robot);
+  // moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
+  // prev_wall_signal = sensorCache->getWallSignal();
+  // moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   
-  int loop_counter = 0;
-  int right_turn_counter = 0;
-  RobotVision vision;
-  while (true) {
+  // int loop_counter = 0;
+  // int right_turn_counter = 0;
+  // RobotVision vision;
+  // while (true) {
 
-    if(loop_counter % correctionCount == 0) {
-      //Straighten out the movement - too close
-      current_wall_signal = sensorCache->getWallSignal();
-      if(current_wall_signal >= 70) {
-        moveRobot(robot, speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-        this_thread::sleep_for(chrono::milliseconds(20));
-        moveRobot(robot, speed, Create::DRIVE_STRAIGHT); 
-      }
-      if(current_wall_signal <= 10) {
-        moveRobot(robot, speed, Create::DRIVE_INPLACE_CLOCKWISE);
-        this_thread::sleep_for(chrono::milliseconds(20));
-        moveRobot(robot, speed, Create::DRIVE_STRAIGHT); 
-      }
-    }
+  //   if(loop_counter % correctionCount == 0) {
+  //     //Straighten out the movement - too close
+  //     current_wall_signal = sensorCache->getWallSignal();
+  //     if(current_wall_signal >= 70) {
+  //       moveRobot(robot, speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  //       this_thread::sleep_for(chrono::milliseconds(20));
+  //       moveRobot(robot, speed, Create::DRIVE_STRAIGHT); 
+  //     }
+  //     if(current_wall_signal <= 10) {
+  //       moveRobot(robot, speed, Create::DRIVE_INPLACE_CLOCKWISE);
+  //       this_thread::sleep_for(chrono::milliseconds(20));
+  //       moveRobot(robot, speed, Create::DRIVE_STRAIGHT); 
+  //     }
+  //   }
       
-    int local_play = sensorCache->getPlayButton();
-    loop_counter ++;
+  //   int local_play = sensorCache->getPlayButton();
+  //   loop_counter ++;
 
-    if(local_play || timeout) {
-      pthread_mutex_lock(&stream_mutex);
-      robot.sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
-      pthread_mutex_unlock(&stream_mutex);    
-      cout << "Play Pressed" << endl;
-      vision.drawContourMap();
-      moving = false;
-      break;	 
-    }
+  //   if(local_play || timeout) {
+  //     pthread_mutex_lock(&stream_mutex);
+  //     robot.sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
+  //     pthread_mutex_unlock(&stream_mutex);    
+  //     cout << "Play Pressed" << endl;
+  //     vision.drawContourMap();
+  //     moving = false;
+  //     break;	 
+  //   }
+  // }
+  while(true) {
+    cout << sensorCache->getWallSignal(); << endl;
   }
   moveRobot(robot, 0, Create::DRIVE_INPLACE_CLOCKWISE);
   cout << "Done Moving" << endl;
@@ -165,13 +168,6 @@ void * mainThread(void * args) {
 
 int main(int argc, char** argv)
 {
-  pid_t child = fork();
-
-  if (child == 0) {
-    execvp(argv[1], argv+1);
-    perror("Fork()");
-    exit(1);
-  }
   char serial_loc[] = "/dev/ttyUSB0";
 
   //set up signal handler to handle SIGALRM
@@ -210,170 +206,166 @@ int main(int argc, char** argv)
   cout << "timer started" << endl;
 
 
-  try
-    {
-      SerialStream stream (serial_loc, LibSerial::SerialStreamBuf::BAUD_57600);
-      cout << "Opened Serial Stream to" << serial_loc << endl;
-      this_thread::sleep_for(chrono::milliseconds(1000));
-      Create robot(stream);
-      cout << "test" << endl;
-      cout << "Created iRobot Object" << endl;
-      robot.sendFullCommand();
-      cout << "Setting iRobot to Full Mode" << endl;
-      this_thread::sleep_for(chrono::milliseconds(1000));
-      cout << "Robot is ready" << endl;
-    
-      // Set up the song to play
-      Create::note_t note1(50, 50);
-    
-      Create::song_t song;
-      song.push_back(note1);  
-    
-      robot.sendSongCommand(0, song);
+  try {
+    SerialStream stream (serial_loc, LibSerial::SerialStreamBuf::BAUD_57600);
+    cout << "Opened Serial Stream to" << serial_loc << endl;
+    this_thread::sleep_for(chrono::milliseconds(1000));
+    Create robot(stream);
+    cout << "test" << endl;
+    cout << "Created iRobot Object" << endl;
+    robot.sendFullCommand();
+    cout << "Setting iRobot to Full Mode" << endl;
+    this_thread::sleep_for(chrono::milliseconds(1000));
+    cout << "Robot is ready" << endl;
+  
+    // Set up the song to play
+    Create::note_t note1(50, 50);
+  
+    Create::song_t song;
+    song.push_back(note1);  
+  
+    robot.sendSongCommand(0, song);
 
-      // Let's stream some sensors.
-      Create::sensorPackets_t sensors;
-      sensors.push_back(Create::SENSOR_BUMPS_WHEELS_DROPS); /* 1 data byte */
-      sensors.push_back(Create::SENSOR_OVERCURRENTS); /* 1 data byte + 2 possible unused bytes */
-      sensors.push_back(Create::SENSOR_WALL_SIGNAL); /* 2 data bytes */
-      sensors.push_back(Create::SENSOR_CLIFF_LEFT_SIGNAL);
-      sensors.push_back(Create::SENSOR_CLIFF_FRONT_LEFT_SIGNAL);
-      sensors.push_back(Create::SENSOR_CLIFF_FRONT_RIGHT_SIGNAL);
-      sensors.push_back(Create::SENSOR_CLIFF_RIGHT_SIGNAL);
-      sensors.push_back (Create::SENSOR_BUTTONS);
-      sensors.push_back(Create::SENSOR_ANGLE);
+    // Let's stream some sensors.
+    Create::sensorPackets_t sensors;
+    sensors.push_back(Create::SENSOR_BUMPS_WHEELS_DROPS); /* 1 data byte */
+    sensors.push_back(Create::SENSOR_OVERCURRENTS); /* 1 data byte + 2 possible unused bytes */
+    sensors.push_back(Create::SENSOR_WALL_SIGNAL); /* 2 data bytes */
+    sensors.push_back(Create::SENSOR_CLIFF_LEFT_SIGNAL);
+    sensors.push_back(Create::SENSOR_CLIFF_FRONT_LEFT_SIGNAL);
+    sensors.push_back(Create::SENSOR_CLIFF_FRONT_RIGHT_SIGNAL);
+    sensors.push_back(Create::SENSOR_CLIFF_RIGHT_SIGNAL);
+    sensors.push_back (Create::SENSOR_BUTTONS);
+    sensors.push_back(Create::SENSOR_ANGLE);
 
-      robot.sendStreamCommand (sensors);
-      cout << "Sent Stream Command" << endl;
-        
-      pthread_cond_init(&condition_wait, NULL);
-      pthread_mutex_init(&stream_mutex, NULL);
-
-      sensorCache = new RobotSensors(robot, &stream_mutex);
-
-      //Start the Robot safety threads
-      pthread_t overcurrent_thread, cliff_wheelDrop_thread, objectID, main_thread, sensor_thread;
-      pthread_attr_t cliffAttr, mainAttr, visionAttr, OCAttr, sensorAttr;
-      struct sched_param cliffParam, mainParam, visionParam, OCParam, sensorParam;
-   
-      if (pthread_attr_init(&cliffAttr) != 0) {
-        perror("attr_init cliffAttr");
-      }
-      if (pthread_attr_init(&mainAttr) != 0) {
-        perror("attr_init mainAttr");
-      }
-      if (pthread_attr_init(&OCAttr) != 0) {
-        perror("attr_init OCAttr");
-      }
-      if (pthread_attr_init(&sensorAttr) != 0) {
-        perror("attr_init sensorAttr");
-      }
-    
-      if (pthread_attr_setinheritsched(&cliffAttr, PTHREAD_EXPLICIT_SCHED) != 0) {
-        perror("attr_setinheritsched cliffAttr");
-      }
-      if (pthread_attr_setinheritsched(&OCAttr, PTHREAD_EXPLICIT_SCHED) != 0) {  
-        perror("attr_setinheritsched OCAttr");
-      }
-      if (pthread_attr_setinheritsched(&mainAttr, PTHREAD_EXPLICIT_SCHED) != 0) { 
-        perror("attr_setinheritsched mainAttr");
-      }
-      if (pthread_attr_setinheritsched(&sensorAttr, PTHREAD_EXPLICIT_SCHED) != 0) { 
-        perror("attr_setinheritsched sensorAttr");
-      }
-
-      if (pthread_attr_getschedparam(&mainAttr, &mainParam) != 0) {
-        perror("attr_getschedparam mainAttr");
-      }
-      if (pthread_attr_getschedparam(&OCAttr, &OCParam) != 0) {
-        perror("attr_getschedparam OCAttr");
-      }
-      if (pthread_attr_getschedparam(&cliffAttr, &cliffParam) != 0) {
-        perror("attr_getschedparam cliffAttr");
-      }
-      if (pthread_attr_getschedparam(&sensorAttr, &sensorParam) != 0) {
-        perror("attr_getschedparam sensorAttr");
-      }
-        
-      mainParam.sched_priority = 95;
-      OCParam.sched_priority = 18;
-      cliffParam.sched_priority = 20;
-      sensorParam.sched_priority = 90;
-
-      if (pthread_attr_setschedpolicy(&mainAttr, SCHED_FIFO) != 0) {
-        perror("attr_setschedpolicy mainAttr");
-      }
-      if (pthread_attr_setschedpolicy(&OCAttr, SCHED_FIFO) != 0) {
-        perror("attr_setschedpolicy OCAttr");
-      }
-      if (pthread_attr_setschedpolicy(&cliffAttr, SCHED_FIFO) != 0) {
-        perror("attr_setschedpolicy cliffAttr");
-      }
-      if (pthread_attr_setschedpolicy(&visionAttr, SCHED_FIFO) != 0) {
-        perror("attr_setschedpolicy visionAttr");
-      }
-      if (pthread_attr_setschedpolicy(&sensorAttr, SCHED_FIFO) != 0) {
-        perror("attr_setschedpolicy sensorAttr");
-      }
-
-      if (pthread_attr_setschedparam(&mainAttr, &mainParam) != 0) {
-        perror("attr_setschedparam visionAttr");
-      }
-      if (pthread_attr_setschedparam(&OCAttr, &OCParam) != 0) { 
-        perror("attr_setschedparam OCAttr");
-      }
-      if (pthread_attr_setschedparam(&cliffAttr, &cliffParam) != 0) {
-        perror("attr_setschedparam cliffAttr");
-      }
-      if (pthread_attr_setschedparam(&sensorAttr, &sensorParam) != 0) {
-        perror("attr_setschedparam sensorAttr");
-      }
-
-      RobotSafetyStruct thread_info;
-      thread_info.speed = speed;
-      thread_info.robot = &robot;
-      thread_info.stream_mutex = &stream_mutex;
-      thread_info.turning = &turning;
-      thread_info.cv = &condition_wait;
-      thread_info.timeout = &timeout;
-      thread_info.moving = &moving;
-      thread_info.sensorCache = sensorCache;
-
-      if (pthread_create(&main_thread, &mainAttr, &mainThread, &thread_info) != 0) {
-        perror("pthread_create main_thread");
-        return -1;
-      }/*
-      if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
-        perror("pthread_create overcurrent_thread");
-        return -1;
-      }
-      if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
-        perror("pthread_create cliff_wheelDrop_thread");
-        return -1;
-      } */
-      pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
+    robot.sendStreamCommand (sensors);
+    cout << "Sent Stream Command" << endl;
       
-      cout << "After Create" << endl;
-      sleep(10);
+    pthread_cond_init(&condition_wait, NULL);
+    pthread_mutex_init(&stream_mutex, NULL);
 
-      pthread_join(main_thread, NULL);
-      //pthread_join(overcurrent_thread, NULL);
-      //pthread_join(cliff_wheelDrop_thread, NULL);
+    sensorCache = new RobotSensors(robot, &stream_mutex);
 
-      pthread_attr_destroy(&cliffAttr);
-      pthread_attr_destroy(&OCAttr);
-      pthread_attr_destroy(&mainAttr);
-      //robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
-    }   
+    //Start the Robot safety threads
+    pthread_t overcurrent_thread, cliff_wheelDrop_thread, objectID, main_thread, sensor_thread;
+    pthread_attr_t cliffAttr, mainAttr, visionAttr, OCAttr, sensorAttr;
+    struct sched_param cliffParam, mainParam, visionParam, OCParam, sensorParam;
+ 
+    if (pthread_attr_init(&cliffAttr) != 0) {
+      perror("attr_init cliffAttr");
+    }
+    if (pthread_attr_init(&mainAttr) != 0) {
+      perror("attr_init mainAttr");
+    }
+    if (pthread_attr_init(&OCAttr) != 0) {
+      perror("attr_init OCAttr");
+    }
+    if (pthread_attr_init(&sensorAttr) != 0) {
+      perror("attr_init sensorAttr");
+    }
+  
+    if (pthread_attr_setinheritsched(&cliffAttr, PTHREAD_EXPLICIT_SCHED) != 0) {
+      perror("attr_setinheritsched cliffAttr");
+    }
+    if (pthread_attr_setinheritsched(&OCAttr, PTHREAD_EXPLICIT_SCHED) != 0) {  
+      perror("attr_setinheritsched OCAttr");
+    }
+    if (pthread_attr_setinheritsched(&mainAttr, PTHREAD_EXPLICIT_SCHED) != 0) { 
+      perror("attr_setinheritsched mainAttr");
+    }
+    if (pthread_attr_setinheritsched(&sensorAttr, PTHREAD_EXPLICIT_SCHED) != 0) { 
+      perror("attr_setinheritsched sensorAttr");
+    }
+
+    if (pthread_attr_getschedparam(&mainAttr, &mainParam) != 0) {
+      perror("attr_getschedparam mainAttr");
+    }
+    if (pthread_attr_getschedparam(&OCAttr, &OCParam) != 0) {
+      perror("attr_getschedparam OCAttr");
+    }
+    if (pthread_attr_getschedparam(&cliffAttr, &cliffParam) != 0) {
+      perror("attr_getschedparam cliffAttr");
+    }
+    if (pthread_attr_getschedparam(&sensorAttr, &sensorParam) != 0) {
+      perror("attr_getschedparam sensorAttr");
+    }
+      
+    mainParam.sched_priority = 95;
+    OCParam.sched_priority = 18;
+    cliffParam.sched_priority = 20;
+    sensorParam.sched_priority = 90;
+
+    if (pthread_attr_setschedpolicy(&mainAttr, SCHED_FIFO) != 0) {
+      perror("attr_setschedpolicy mainAttr");
+    }
+    if (pthread_attr_setschedpolicy(&OCAttr, SCHED_FIFO) != 0) {
+      perror("attr_setschedpolicy OCAttr");
+    }
+    if (pthread_attr_setschedpolicy(&cliffAttr, SCHED_FIFO) != 0) {
+      perror("attr_setschedpolicy cliffAttr");
+    }
+    if (pthread_attr_setschedpolicy(&sensorAttr, SCHED_FIFO) != 0) {
+      perror("attr_setschedpolicy sensorAttr");
+    }
+
+    if (pthread_attr_setschedparam(&mainAttr, &mainParam) != 0) {
+      perror("attr_setschedparam visionAttr");
+    }
+    if (pthread_attr_setschedparam(&OCAttr, &OCParam) != 0) { 
+      perror("attr_setschedparam OCAttr");
+    }
+    if (pthread_attr_setschedparam(&cliffAttr, &cliffParam) != 0) {
+      perror("attr_setschedparam cliffAttr");
+    }
+    if (pthread_attr_setschedparam(&sensorAttr, &sensorParam) != 0) {
+      perror("attr_setschedparam sensorAttr");
+    }
+
+    RobotSafetyStruct thread_info;
+    thread_info.speed = speed;
+    thread_info.robot = &robot;
+    thread_info.stream_mutex = &stream_mutex;
+    thread_info.turning = &turning;
+    thread_info.cv = &condition_wait;
+    thread_info.timeout = &timeout;
+    thread_info.moving = &moving;
+    thread_info.sensorCache = sensorCache;
+
+    if (pthread_create(&main_thread, &mainAttr, &mainThread, &thread_info) != 0) {
+      perror("pthread_create main_thread");
+      return -1;
+    }
+    // if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
+    //   perror("pthread_create overcurrent_thread");
+    //   return -1;
+    // }
+    // if (pthread_create(&cliff_wheelDrop_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info) != 0) {
+    //   perror("pthread_create cliff_wheelDrop_thread");
+    //   return -1;
+    // }
+    //pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
+    
+    cout << "After Create" << endl;
+    sleep(10);
+
+    pthread_join(main_thread, NULL);
+    // pthread_join(overcurrent_thread, NULL);
+    // pthread_join(cliff_wheelDrop_thread, NULL);
+
+    pthread_attr_destroy(&cliffAttr);
+    pthread_attr_destroy(&OCAttr);
+    pthread_attr_destroy(&mainAttr);
+    //robot.sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+  }   
   catch (InvalidArgument& e)
-    {
-      cerr << e.what () << endl;
-      return 3;
-    }
+  {
+    cerr << e.what () << endl;
+    return 3;
+  }
   catch (CommandNotAvailable& e)
-    {
-      cerr << e.what () << endl;
-      return 4;
-    }
+  {
+    cerr << e.what () << endl;
+    return 4;
+  }
   cout << "Hi" << endl;   
 }
