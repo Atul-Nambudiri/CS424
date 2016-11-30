@@ -68,6 +68,8 @@ void RobotVision::drawContourMap(){
         waypoint.y *= scale*2;
         if(waypoint.y < 0)
             waypoint.y = -1 *waypoint.y;
+        if(waypoint.x < 0)
+            waypoint.x = -1 *waypoint.x;
     }
     bound = boundingRect(waypoints);
     for (int i = 0; i < waypoints.size()-1; i++) {

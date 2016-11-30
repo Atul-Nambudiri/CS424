@@ -10,7 +10,6 @@
 #include <signal.h>
 #include <string.h>
 #include <raspicam/raspicam_cv.h>
-#include "RobotVision.hh"
 #include "RobotSensors.hh"
 #include "irobot-create.hh"
 #include "RobotSafety.hh"
