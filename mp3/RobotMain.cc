@@ -96,8 +96,8 @@ void moveClockwise(Create& robot){
     this_thread::sleep_for(chrono::milliseconds(300));
     cout << "Reached Wall" << endl;
   }
-  moveRobot(robot, 50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-  this_thread::sleep_for(chrono::milliseconds(1100));
+  //moveRobot(robot, 50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  //this_thread::sleep_for(chrono::milliseconds(1100));
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT); 
   moveCounterClockwise(robot);
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT); 
@@ -444,7 +444,6 @@ int main(int argc, char** argv)
     perror("pthread_create main_thread");
     return -1;
       }
-    /*
      if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
      perror("pthread_create overcurrent_thread");
      return -1;
@@ -457,7 +456,6 @@ int main(int argc, char** argv)
      perror("pthread_create objectID_thread");
      return -1;
      }      
-    */
     pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
       
       cout << "After Create" << endl;

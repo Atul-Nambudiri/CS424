@@ -139,19 +139,17 @@ void * RobotVision::objectIdentification(void * args) {
       robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
       this_thread::sleep_for(chrono::milliseconds(400));
       Camera.grab();
-      //pthread_mutex_unlock(stream_mutex);
-      Camera.retrieve (bgr_image);
-      //cout << "Retrieved Image" << endl;
 
-      //@TODO: Make robot keep moving forward
-      //pthread_mutex_lock(stream_mutex);
+      /*
       while (*turning) {
         pthread_cond_wait(cv, stream_mutex);
       }
+      */
       robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
       pthread_mutex_unlock(stream_mutex);
-
       cout << "RobotVision: Unlocking" << endl;
+
+      Camera.retrieve (bgr_image);
       if(!lamp_found) {
         num ++;
         if(identify(lamp.image, bgr_image, "")) {

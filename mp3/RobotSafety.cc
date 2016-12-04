@@ -37,7 +37,7 @@ void * RobotSafety::overcurrent(void * args) {
 
     if (left && right) {
       cout << "overcurrent detected" << endl;
-      this_thread::sleep_for(chrono::milliseconds(1000));
+      this_thread::sleep_for(chrono::milliseconds(700));
 
       //check again
       bool left = sensors->getLeftWheelOvercurrent();
