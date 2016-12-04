@@ -26,9 +26,10 @@ void * RobotSafety::overcurrent(void * args) {
   pthread_cond_t * cv = info->cv;
   RobotSensors * sensors = info->sensorCache;
 
+  this_thread::sleep_for(chrono::milliseconds(1000));
   bool error = false;
   cout << "Overcurrent Thread Starting" << endl;
-  while (!timeout) {
+  while (!(*timeout)) {
     //Check for overcurrent in either wheel
     bool left = sensors->getLeftWheelOvercurrent();
     bool right = sensors->getrightWheelOvercurrent();
@@ -54,6 +55,7 @@ void * RobotSafety::overcurrent(void * args) {
       error = false;
       startAgain(stream_mutex, robot, speed);
     }
+    this_thread::sleep_for(chrono::milliseconds(15));
   }
 
   return NULL;
@@ -79,7 +81,9 @@ void * RobotSafety::cliffWheelDrop(void * args) {
   pthread_mutex_lock(stream_mutex);
   bool local_moving = &moving;
   pthread_mutex_unlock(stream_mutex);
-  while (moving && !timeout) {
+  cout << "moving: " << *moving << endl;
+  cout << "timeout: " << *timeout << endl;
+  while ((*moving) && !(*timeout)) {
     short left = sensors->getCliffLeftSignal();
     short right = sensors->getCliffRightSignal();
     short frontLeft = sensors->getCliffFrontLeftSignal();
@@ -99,7 +103,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
       cliffCounter = 0;
     }
 
-    if (cliffCounter > 50) {
+    if (cliffCounter > 10) {
       if (cliff) {
 	      cout << "Cliff detected " << endl;
       } else {
@@ -114,6 +118,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
     pthread_mutex_lock(stream_mutex);
     local_moving = &moving;
     pthread_mutex_unlock(stream_mutex);
+    this_thread::sleep_for(chrono::milliseconds(15));
   }
   return NULL;
 }

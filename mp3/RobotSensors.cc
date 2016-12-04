@@ -32,7 +32,7 @@ void RobotSensors::updateValues() {
     playButton = robot.playButton();
 
     pthread_mutex_unlock(stream_mutex);
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::this_thread::sleep_for(std::chrono::milliseconds(15));
   }
 }
 

@@ -21,10 +21,10 @@ using namespace std;
 
 pthread_mutex_t stream_mutex;
 pthread_cond_t condition_wait;
-int speed = 140; // 50
+int speed = 140; // 140
 bool turning = false;
 bool right_turning = false;
-int correctionCount = 1; // 2000 when by itself works perfect
+int correctionCount = 1; 
 int current_wall_signal = 0;
 int prev_wall_signal = 0;
 volatile bool timeout = false; /* Need volatile because changed in sig handler */
@@ -57,41 +57,48 @@ void moveRobot(Create& robot, short v, Create::DriveCommand dc){
 void moveCounterClockwise(Create& robot){
   setTurning(true);
   moveRobot(robot, 70, Create::DRIVE_INPLACE_COUNTERCLOCKWISE); // 30
-  setTurning(false);
+  //setTurning(false);
   
   int local_prev_wall_signal = sensorCache->getWallSignal();
   int current_signal = sensorCache->getWallSignal();
 
-  setTurning(true);
+  //setTurning(true);
   cout << "start" << endl;
   int diff = sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal() - 10);
-  int prevdiff;
-  while(diff > 5){ // current_signal > local_prev_wal_signal - 4
-    prevdiff = diff;
-    diff= sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal() - 10);
-    if (diff != prevdiff) {
-      //      cout << "difference " << diff << endl;
-    }
+  int count = 0;
+  while(count < 10){ // diff > 5
+    //cout << "diff: " << diff << endl;
+    diff = sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal()); //     diff= sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal() - 10);
+    if (diff < 0) // Check if current wall signal is pass local maxima
+      count++;
+    else
+        count = 0;
+    this_thread::sleep_for(chrono::milliseconds(15));
   }
   cout << "done" << endl;
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
   setTurning(false);
-  cout << "Turned All the way" << endl;
+  cout << "Turned all the way" << endl;
 }
 
 void moveClockwise(Create& robot){
   //robot.sendDriveCommand(speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
   //robot.sendWaitAngleCommand(35);
   setTurning(true);
-  moveRobot(robot, speed, -140);
-  setTurning(true);
+  moveRobot(robot, speed, -120);
   // robot.sendDriveCommand (speed, Create::DRIVE_STRAIGHT);
-  while(!sensorCache->getBumpLeft() && !sensorCache->getBumpRight() && (sensorCache->getWallSignal() < 120)) { }
-  moveRobot(robot, -60, Create::DRIVE_STRAIGHT);
-  this_thread::sleep_for(chrono::milliseconds(600));
-  moveRobot(robot, 0, Create::DRIVE_STRAIGHT);       
-  this_thread::sleep_for(chrono::milliseconds(300));
-  cout << "Reached Wall" << endl;
+  while(!sensorCache->getBumpLeft() && !sensorCache->getBumpRight() && (sensorCache->getWallSignal() < 100)) { }
+
+  if ( sensorCache->getBumpLeft() || sensorCache->getBumpRight()){ // Only back up if there is a bump 
+    moveRobot(robot, -60, Create::DRIVE_STRAIGHT);
+    this_thread::sleep_for(chrono::milliseconds(600));
+    moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
+    this_thread::sleep_for(chrono::milliseconds(300));
+    cout << "Reached Wall" << endl;
+  }
+  moveRobot(robot, 50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  this_thread::sleep_for(chrono::milliseconds(1100));
+  moveRobot(robot, 0, Create::DRIVE_STRAIGHT); 
   moveCounterClockwise(robot);
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT); 
 }
@@ -106,15 +113,13 @@ void turnLeft(Create& robot, RobotVision& vision) {
   setTurning(true);
   cout << "Reached Wall. Need to turn left" << endl;
   moveRobot(robot, -80, Create::DRIVE_STRAIGHT);
-  this_thread::sleep_for(chrono::milliseconds(500));
-  setTurning(true);
+  this_thread::sleep_for(chrono::milliseconds(300));
   moveRobot(robot, 50, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
-  setTurning(false);
   this_thread::sleep_for(chrono::milliseconds(1500));
-             
+  moveRobot(robot, 0, Create::DRIVE_STRAIGHT);           
   //setRobotTurnAngle(robot, 30); // This puts it in infinite spin
              
-  moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
+  /*moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   bool bump = sensorCache->getBumpRight() || sensorCache->getBumpLeft();
   
   while(!bump) {
@@ -127,10 +132,13 @@ void turnLeft(Create& robot, RobotVision& vision) {
 
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
   vision.addNewWaypoint(speed);
-  
+  */
+
+  cout << "Turned 30" << endl;
   moveCounterClockwise(robot);
   
   prev_wall_signal = sensorCache->getWallSignal();
+  vision.addNewWaypoint(speed);
   vision.updateDirectionVector(); // Does this need to be 90 or -90?
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   cout << "Done turning left" << endl;
@@ -139,10 +147,9 @@ void turnLeft(Create& robot, RobotVision& vision) {
 
 void turnRight(Create& robot, RobotVision& vision) {
   cout << "Need to turn right" << endl;
-  this_thread::sleep_for(chrono::milliseconds(1000));
+  this_thread::sleep_for(chrono::milliseconds(1000)); //1200
   setTurning(true);
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
-
   moveClockwise(robot);
   //  prev_wall_signal = robot.wallSignal();
   vision.addNewWaypoint(speed);
@@ -167,15 +174,15 @@ void * mainThread(void * args) {
 
   moveRobot(robot, -80, Create::DRIVE_STRAIGHT);
 
-  this_thread::sleep_for(chrono::milliseconds(200));    
+  this_thread::sleep_for(chrono::milliseconds(100));    
 
   moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
 
-  cout << "Reached Wall" << endl;
+  //  cout << "Reached Wall" << endl;
 
   moveCounterClockwise(robot);
 
-  moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
+  //moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
 
   prev_wall_signal = sensorCache->getWallSignal();
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
@@ -192,29 +199,36 @@ void * mainThread(void * args) {
     //Need to turn right
     if(sensorCache->getWallSignal() == 0) {
       right_turn_counter ++;
-      //if(right_turn_counter > 20000) { // Took if statement out because it will just do correction around corner
-        turnRight(robot, vision);
-        right_turn_counter = 0;
-    //}
+      turnRight(robot, vision);
+      right_turn_counter = 0;
+
     }
     else {
       right_turn_counter = 0;
     }
 
-    if(loop_counter % correctionCount == 0) {
+    
       //Straighten out the movement - too close
       current_wall_signal = sensorCache->getWallSignal();
-      if(current_wall_signal >= 70) {
+      //cout << "ROBOTMAIN: current_wall_signal = " << current_wall_signal << endl;
+
+      if(sensorCache->getWallSignal() >= 80) {
+        cout << "correcting left" << endl;
+	setTurning(true);
         moveRobot(robot, speed, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
         this_thread::sleep_for(chrono::milliseconds(20));
-        moveRobot(robot, speed, Create::DRIVE_STRAIGHT); 
+        moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
+	setTurning(false);
       }
-      if(current_wall_signal <= 10) {
+      if (sensorCache->getWallSignal() <= 15) {
+        cout << "correcting right" << endl;
+	setTurning(true);
         moveRobot(robot, speed, Create::DRIVE_INPLACE_CLOCKWISE);
         this_thread::sleep_for(chrono::milliseconds(20));
-        moveRobot(robot, speed, Create::DRIVE_STRAIGHT); 
+        moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
+	setTurning(false);
       }
-    }
+
       
     int local_play = sensorCache->getPlayButton();
     loop_counter ++;
@@ -228,6 +242,8 @@ void * mainThread(void * args) {
       moving = false;
       break;     
     }
+    //this_thread::sleep_for(chrono::milliseconds(15));
+
   }
   moveRobot(robot, 0, Create::DRIVE_INPLACE_CLOCKWISE);
   cout << "Done Moving" << endl;
@@ -376,11 +392,11 @@ int main(int argc, char** argv)
     perror("attr_getschedparam sensorAttr");
       }
         
-      mainParam.sched_priority = 95;
+      mainParam.sched_priority = 90; // 95
       OCParam.sched_priority = 18;
-      cliffParam.sched_priority = 60;
+      cliffParam.sched_priority = 92;
       visionParam.sched_priority = 1;
-      sensorParam.sched_priority = 90;
+      sensorParam.sched_priority = 95; // 90
 
       if (pthread_attr_setschedpolicy(&mainAttr, SCHED_FIFO) != 0) {
     perror("attr_setschedpolicy mainAttr");
@@ -428,6 +444,7 @@ int main(int argc, char** argv)
     perror("pthread_create main_thread");
     return -1;
       }
+    /*
      if (pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info) != 0) {
      perror("pthread_create overcurrent_thread");
      return -1;
@@ -439,7 +456,9 @@ int main(int argc, char** argv)
      if (pthread_create(&objectID, &visionAttr, &RobotVision::objectIdentification, &thread_info) != 0) {
      perror("pthread_create objectID_thread");
      return -1;
-     }      pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
+     }      
+    */
+    pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
       
       cout << "After Create" << endl;
       sleep(10);

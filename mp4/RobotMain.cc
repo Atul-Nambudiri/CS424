@@ -154,8 +154,8 @@ void * mainThread(void * args) {
   //   }
   // }
   while(true) {
-    cout << sensorCache->getWallSignal(); << endl;
-    this_thread::sleep_for(chrono::milliseconds(50));
+    cout << robot.wallSignal() << endl;
+    this_thread::sleep_for(chrono::milliseconds(1000));
 
   }
   moveRobot(robot, 0, Create::DRIVE_INPLACE_CLOCKWISE);

@@ -28,29 +28,29 @@ RobotVision::RobotVision() {
 }   
 
 void RobotVision::updateDirectionVector(float rotationAngle){
-    cout << "Begin Update" << endl;
+    //cout << "Begin Update" << endl;
 	float angleRadian = 3.14159265*rotationAngle/180;
     Point2f prevDirVector = this->directionVector;
     this->directionVector.x = prevDirVector.x*cos(angleRadian) - prevDirVector.y*sin(angleRadian);
     this->directionVector.y = prevDirVector.x*sin(angleRadian) + prevDirVector.y*cos(angleRadian);
-    cout << "End Update" << endl;
+    //cout << "End Update" << endl;
 }
 
 void RobotVision::addNewWaypoint(int robotSpeed){
-    cout << "Begin add waypoint" << endl;
+    //cout << "Begin add waypoint" << endl;
     time_t now = time(NULL);
     time_t travelTime = now - this->prevWaypointTime;   
     float distance = robotSpeed * (float) travelTime;
-	cout << distance << endl;
+	//cout << distance << endl;
     this->currWaypoint.x += distance*this->directionVector.x;
 	this->currWaypoint.y += distance*this->directionVector.y;
     this->waypoints.push_back(this->currWaypoint);
     this->prevWaypointTime = now;
-    cout << "End add waypoint" << endl;
+    //cout << "End add waypoint" << endl;
 }
 
 void RobotVision::drawContourMap(){
-    cout << "Begin draw" << endl;
+    //cout << "Begin draw" << endl;
     // Create a drawing context, and use white background.
     Mat img_output(1200, 1600, CV_8UC3, Scalar(255, 255, 255));
     // // Plot the waypoints using blue color.
@@ -77,7 +77,7 @@ void RobotVision::drawContourMap(){
 	rectangle(img_output, bound, Scalar(0, 1200, 1600));
     // // Finally store it as a png file
     imwrite("irobot_plot.png", img_output);
-    cout << "End draw" << endl;
+    //cout << "End draw" << endl;
 }
                 
 
@@ -91,7 +91,7 @@ void * RobotVision::objectIdentification(void * args) {
   if(pDIR = opendir(dir.c_str())) {
       while(image = readdir(pDIR)) {
           if(strcmp(image->d_name, ".") != 0 && strcmp(image->d_name, "..") != 0) {
-              cout << dir + "/" + image->d_name << endl;
+              //cout << dir + "/" + image->d_name << endl;
               Mat image_mat = imread(dir + "/" + image->d_name, IMREAD_GRAYSCALE);
               if(strcmp(image->d_name, "magic-lamp-600.jpg") == 0) {
                 lamp = {
@@ -129,27 +129,29 @@ void * RobotVision::objectIdentification(void * args) {
     
     while(local_moving) {
       pthread_mutex_lock(stream_mutex);
-      cout << "locked" << endl;
+      //cout << "RobotVision: locked" << endl;
       while (*turning) {
-        cout << "waiting for turn" << endl;
+        //cout << "RobotVision: waiting for turn" << endl;
         pthread_cond_wait(cv, stream_mutex);
       }
-      cout << "done waiting for turn" << endl;
+      //cout << "RobotVision: done waiting for turn" << endl;
 
       robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
       this_thread::sleep_for(chrono::milliseconds(400));
       Camera.grab();
+      //pthread_mutex_unlock(stream_mutex);
       Camera.retrieve (bgr_image);
-      cout << "Retrieved Image" << endl;
+      //cout << "Retrieved Image" << endl;
 
       //@TODO: Make robot keep moving forward
+      //pthread_mutex_lock(stream_mutex);
       while (*turning) {
         pthread_cond_wait(cv, stream_mutex);
       }
       robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
       pthread_mutex_unlock(stream_mutex);
 
-      cout << "Unlocking" << endl;
+      cout << "RobotVision: Unlocking" << endl;
       if(!lamp_found) {
         num ++;
         if(identify(lamp.image, bgr_image, "")) {
@@ -167,11 +169,11 @@ void * RobotVision::objectIdentification(void * args) {
         }
       }
       image_queue.push(bgr_image);
-      this_thread::sleep_for(chrono::milliseconds(1000));
+      this_thread::sleep_for(chrono::milliseconds(2500));
       pthread_mutex_lock(stream_mutex);
       local_moving = *moving;
       pthread_mutex_unlock(stream_mutex);
-      cout << "local_moving: " << local_moving << endl;
+      cout << "RobotVision: local_moving: " << local_moving << endl;
     }
     robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);  //In case we pressed the play button before we set the speed
     //We are finished with moving. Run the object Identification here.
