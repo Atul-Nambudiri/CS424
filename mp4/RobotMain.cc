@@ -58,9 +58,19 @@ void moveCounterClockwise(Create* robot){
   cout << "Turned all the way" << endl;
 }
 
+void turnLeft(Create *  robot) {
+  cout << "Reached Wall. Need to turn left" << endl;
+  moveRobot(robot, -80, Create::DRIVE_STRAIGHT);
+  this_thread::sleep_for(chrono::milliseconds(300));
+  moveRobot(robot, 0, Create::DRIVE_STRAIGHT);           
+  moveCounterClockwise(robot); 
+  moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
+  cout << "Done turning left" << endl;
+}
+
 /* Pure gain */
 double controller(double error) {
-  return error * 0.4;
+  return error * 0.6;
 }
 
 void robotModel(Create * robot, double theta) {
@@ -85,7 +95,7 @@ double sensorModel(Create * robot) {
   short wallSignal = v[v.size()/2];
   double distance = (180 - wallSignal) / 2.62;
   cout << "distance: " << distance << endl;
-  cout << 180 - wallSignal << endl;
+  cout << 200 - wallSignal << endl;
   cout << wallSignal << endl;
   pthread_mutex_unlock(&stream_mutex);
   return distance;
@@ -121,15 +131,20 @@ void * mainThread(void * args) {
   prev_wall_signal = sensorCache->getWallSignal();
   moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
 
-  double desiredDistance = 25; /* millimeters */
+  double desiredDistance = 30; /* millimeters */
   while (1) {
+    if(sensorCache->getBumpLeft() && sensorCache->getBumpRight()) {
+      turnLeft(robot);
+    }
     double actualDistance = sensorModel(robot);
     double error = desiredDistance - actualDistance;
-    cout << "error: " << error << endl;
-    double theta = controller(error);
-    cout << "theta: " << theta << endl;
-    robotModel(robot, theta);
-    this_thread::sleep_for(chrono::milliseconds(400));
+    if(abs(error) > 2) {
+        cout << "error: " << error << endl;
+        double theta = controller(error);
+        cout << "theta: " << theta << endl;
+        robotModel(robot, theta);
+    }
+    this_thread::sleep_for(chrono::milliseconds(250));
   }
   cout << "Done Moving" << endl;
   return NULL;
