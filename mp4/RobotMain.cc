@@ -64,7 +64,9 @@ void * mainThread(void * args) {
   while (1) {
     double actualDistance = sensorModel();
     double error = desiredDistance - actualDistance;
+    cout << "error: " << error << endl;
     double theta = controller(error);
+    cout << "theta: " << theta << endl;
     robotModel(robot, theta);
     this_thread::sleep_for(chrono::milliseconds(360));
   }
