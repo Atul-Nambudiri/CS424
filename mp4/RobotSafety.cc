@@ -18,15 +18,14 @@ void RobotSafety::startAgain(pthread_mutex_t * stream_mutex, Create * robot, int
 
 void * RobotSafety::overcurrent(void * args) {
   RobotSafetyStruct * info = (RobotSafetyStruct *) args;
-  pthread_mutex_t * stream_mutex = info->stream_mutex;
-  Create * robot = info->robot;
+
   int speed = info->speed;
-  volatile bool * timeout = info->timeout;
-  bool * moving = info->moving;
-  pthread_cond_t * cv = info->cv;
+  Create * robot = info->robot;
+  pthread_mutex_t * stream_mutex = info->stream_mutex;
   RobotSensors * sensors = info->sensorCache;
 
-  bool error = false;
+  this_thread::sleep_for(chrono::milliseconds(1000)); // So it doens't beep in the beginning
+
   cout << "Overcurrent Thread Starting" << endl;
   while (!timeout) {
     //Check for overcurrent in either wheel
@@ -43,16 +42,13 @@ void * RobotSafety::overcurrent(void * args) {
       bool right = sensors->getrightWheelOvercurrent();
 
       if (left && right) {
-        error = true;
-
         cout << "overcurrent confirmed" << endl;
 
         //stop robot and play song
         stopAndPlaySong(stream_mutex, robot);
+        while (!sensors->getPlayButton()) {/* do nothing */}
+        startAgain(stream_mutex, robot, speed);
       }
-    } else if (error) {
-      error = false;
-      startAgain(stream_mutex, robot, speed);
     }
   }
 
@@ -61,12 +57,10 @@ void * RobotSafety::overcurrent(void * args) {
 
 void * RobotSafety::cliffWheelDrop(void * args) {
   RobotSafetyStruct * info = (RobotSafetyStruct *) args;
-  pthread_mutex_t * stream_mutex = info->stream_mutex;
-  Create * robot = info->robot;
+
   int speed = info->speed;
-  volatile bool * timeout = info->timeout;
-  bool * moving = info->moving;
-  pthread_cond_t * cv = info->cv;
+  Create * robot = info->robot;
+  pthread_mutex_t * stream_mutex = info->stream_mutex;
   RobotSensors * sensors = info->sensorCache;
 	
   this_thread::sleep_for(chrono::milliseconds(1000)); // So it doens't beep in the beginning

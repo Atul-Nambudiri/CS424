@@ -35,7 +35,6 @@ public:
 
   static void * startUpdateValues(void * args);
   void updateValues();
-  void beginCalculatingAngle();
 
 private:
 
@@ -56,7 +55,10 @@ private:
 
   volatile short wallSignal;
   volatile short prevWallSignal;
-  volatile short playButton;
+  volatile short angle;
+
+  volatile bool playButton;
+
   volatile bool bumpLeft;
   volatile bool bumpRight;
     
