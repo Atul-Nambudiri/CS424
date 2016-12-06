@@ -25,6 +25,37 @@ int prev_wall_signal = 0;
 
 RobotSensors * sensorCache;
 
+void moveRobot(Create& robot, short v, Create::DriveCommand dc){
+  pthread_mutex_lock(&stream_mutex);
+  robot.sendDriveCommand(v, dc);
+  pthread_mutex_unlock(&stream_mutex);    
+}
+
+void moveCounterClockwise(Create& robot){
+  moveRobot(robot, 70, Create::DRIVE_INPLACE_COUNTERCLOCKWISE); // 30
+  //setTurning(false);
+  
+  int local_prev_wall_signal = sensorCache->getWallSignal();
+  int current_signal = sensorCache->getWallSignal();
+
+  //setTurning(true);
+  cout << "start" << endl;
+  int diff = sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal() - 10);
+  int count = 0;
+  while(count < 10){ // diff > 5
+    //cout << "diff: " << diff << endl;
+    diff = sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal()); //     diff= sensorCache->getWallSignal() - (sensorCache->getPrevWallSignal() - 10);
+    if (diff < 0) // Check if current wall signal is pass local maxima
+      count++;
+    else
+        count = 0;
+    this_thread::sleep_for(chrono::milliseconds(15));
+  }
+  cout << "done" << endl;
+  moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
+  cout << "Turned all the way" << endl;
+}
+
 /* Pure gain */
 double controller(double error) {
   return error * 0.08;
@@ -56,10 +87,27 @@ void * mainThread(void * args) {
   Create * robot = info->robot;
 
   this_thread::sleep_for(chrono::milliseconds(2000));
+  moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
+  cout << "Sent Drive Command" << endl;
+ 
+  while(!bump) {
+    bump = sensorCache->getBumpRight() || sensorCache->getBumpLeft();
+  }
 
-  pthread_mutex_lock(&stream_mutex);
-  robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
-  pthread_mutex_unlock(&stream_mutex);
+  moveRobot(robot, -80, Create::DRIVE_STRAIGHT);
+
+  this_thread::sleep_for(chrono::milliseconds(100));    
+
+  moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
+
+  //  cout << "Reached Wall" << endl;
+  setTurning(true);
+  moveCounterClockwise(robot);
+  setTurning(false);
+  //moveRobot(robot, 0, Create::DRIVE_STRAIGHT);
+
+  prev_wall_signal = sensorCache->getWallSignal();
+  moveRobot(robot, speed, Create::DRIVE_STRAIGHT);
   double desiredDistance = 250; /* millimeters */
   while (1) {
     double actualDistance = sensorModel();
