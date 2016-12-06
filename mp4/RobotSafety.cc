@@ -27,7 +27,7 @@ void * RobotSafety::overcurrent(void * args) {
   this_thread::sleep_for(chrono::milliseconds(1000)); // So it doens't beep in the beginning
 
   cout << "Overcurrent Thread Starting" << endl;
-  while (!timeout) {
+  while (true) {
     //Check for overcurrent in either wheel
     bool left = sensors->getLeftWheelOvercurrent();
     bool right = sensors->getrightWheelOvercurrent();
@@ -70,10 +70,7 @@ void * RobotSafety::cliffWheelDrop(void * args) {
   bool error = false;
   cout << "Cliff Thread Starting" << endl;
   cout << "Wheel Drop Thread Starting" << endl;
-  pthread_mutex_lock(stream_mutex);
-  bool local_moving = &moving;
-  pthread_mutex_unlock(stream_mutex);
-  while (moving && !timeout) {
+  while (true) {
     short left = sensors->getCliffLeftSignal();
     short right = sensors->getCliffRightSignal();
     short frontLeft = sensors->getCliffFrontLeftSignal();
@@ -105,9 +102,6 @@ void * RobotSafety::cliffWheelDrop(void * args) {
       error = false;
       startAgain(stream_mutex, robot, speed);
     }
-    pthread_mutex_lock(stream_mutex);
-    local_moving = &moving;
-    pthread_mutex_unlock(stream_mutex);
   }
   return NULL;
 }

@@ -28,7 +28,7 @@ public:
   short getAngle();
   short getPrevWallSignal();
   short getWallSignal();
-  short getPlayButton();
+  bool getPlayButton();
 
   bool getBumpLeft();
   bool getBumpRight();

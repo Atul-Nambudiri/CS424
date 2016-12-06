@@ -32,7 +32,14 @@ double controller(double error) {
 
 void robotModel(Create * robot, double theta) {
   pthread_mutex_lock(&stream_mutex);
-  robot->sendWaitAngle(theta);
+  robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
+  if (theta > 0) {
+      robot->sendDriveCommand(70, Create::DRIVE_INPLACE_COUNTERCLOCKWISE);
+  } else {
+      robot->sendDriveCommand(70, Create::DRIVE_INPLACE_CLOCKWISE);
+  }
+  robot->sendWaitAngleCommand(theta);
+  robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
   pthread_mutex_unlock(&stream_mutex);
 }
 
@@ -48,13 +55,18 @@ void * mainThread(void * args) {
 
   Create * robot = info->robot;
 
+  this_thread::sleep_for(chrono::milliseconds(2000));
+
+  pthread_mutex_lock(&stream_mutex);
+  robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
+  pthread_mutex_unlock(&stream_mutex);
   double desiredDistance = 250; /* millimeters */
   while (1) {
     double actualDistance = sensorModel();
     double error = desiredDistance - actualDistance;
     double theta = controller(error);
     robotModel(robot, theta);
-    this_thread::sleep_for(chrono::milliseconds(360);
+    this_thread::sleep_for(chrono::milliseconds(360));
   }
   cout << "Done Moving" << endl;
   return NULL;
@@ -104,35 +116,35 @@ int main(int argc, char** argv)
     pthread_attr_t mainAttr, OCAttr, cliffAttr, sensorAttr;
     struct sched_param mainParam, OCParam, cliffParam, sensorParam;
  
-    pthread_attr_init(&mainAttr)
-    pthread_attr_init(&OCAttr)
-    pthread_attr_init(&cliffAttr)
-    pthread_attr_init(&sensorAttr)
+    pthread_attr_init(&mainAttr);
+    pthread_attr_init(&OCAttr);
+    pthread_attr_init(&cliffAttr);
+    pthread_attr_init(&sensorAttr);
   
-    pthread_attr_setinheritsched(&mainAttr, PTHREAD_EXPLICIT_SCHED) 
-    pthread_attr_setinheritsched(&OCAttr, PTHREAD_EXPLICIT_SCHED)
-    pthread_attr_setinheritsched(&cliffAttr, PTHREAD_EXPLICIT_SCHED)
-    pthread_attr_setinheritsched(&sensorAttr, PTHREAD_EXPLICIT_SCHED) 
+    pthread_attr_setinheritsched(&mainAttr, PTHREAD_EXPLICIT_SCHED);
+    pthread_attr_setinheritsched(&OCAttr, PTHREAD_EXPLICIT_SCHED);
+    pthread_attr_setinheritsched(&cliffAttr, PTHREAD_EXPLICIT_SCHED);
+    pthread_attr_setinheritsched(&sensorAttr, PTHREAD_EXPLICIT_SCHED);
 
-    pthread_attr_getschedparam(&mainAttr, &mainParam)
-    pthread_attr_getschedparam(&OCAttr, &OCParam)
-    pthread_attr_getschedparam(&cliffAttr, &cliffParam)
-    pthread_attr_getschedparam(&sensorAttr, &sensorParam)
+    pthread_attr_getschedparam(&mainAttr, &mainParam);
+    pthread_attr_getschedparam(&OCAttr, &OCParam);
+    pthread_attr_getschedparam(&cliffAttr, &cliffParam);
+    pthread_attr_getschedparam(&sensorAttr, &sensorParam);
       
     mainParam.sched_priority = 95;
     OCParam.sched_priority = 18;
     cliffParam.sched_priority = 20;
     sensorParam.sched_priority = 90;
 
-    pthread_attr_setschedpolicy(&mainAttr, SCHED_FIFO)
-    pthread_attr_setschedpolicy(&OCAttr, SCHED_FIFO)
-    pthread_attr_setschedpolicy(&cliffAttr, SCHED_FIFO)
-    pthread_attr_setschedpolicy(&sensorAttr, SCHED_FIFO)
+    pthread_attr_setschedpolicy(&mainAttr, SCHED_FIFO);
+    pthread_attr_setschedpolicy(&OCAttr, SCHED_FIFO);
+    pthread_attr_setschedpolicy(&cliffAttr, SCHED_FIFO);
+    pthread_attr_setschedpolicy(&sensorAttr, SCHED_FIFO);
 
-    pthread_attr_setschedparam(&mainAttr, &mainParam)
-    pthread_attr_setschedparam(&OCAttr, &OCParam) 
-    pthread_attr_setschedparam(&cliffAttr, &cliffParam)
-    pthread_attr_setschedparam(&sensorAttr, &sensorParam)
+    pthread_attr_setschedparam(&mainAttr, &mainParam);
+    pthread_attr_setschedparam(&OCAttr, &OCParam);
+    pthread_attr_setschedparam(&cliffAttr, &cliffParam);
+    pthread_attr_setschedparam(&sensorAttr, &sensorParam);
 
     RobotSafetyStruct thread_info;
     thread_info.speed = speed;
@@ -140,9 +152,9 @@ int main(int argc, char** argv)
     thread_info.stream_mutex = &stream_mutex;
     thread_info.sensorCache = sensorCache;
 
-    pthread_create(&main_thread, &mainAttr, &mainThread, &thread_info)
-    pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info)
-    pthread_create(&cliff_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info)
+    pthread_create(&main_thread, &mainAttr, &mainThread, &thread_info);
+    pthread_create(&overcurrent_thread, &OCAttr, &RobotSafety::overcurrent, &thread_info);
+    pthread_create(&cliff_thread, &cliffAttr, &RobotSafety::cliffWheelDrop, &thread_info);
     pthread_create(&sensor_thread, &sensorAttr, &RobotSensors::startUpdateValues, sensorCache);
     
     cout << "After Create" << endl;
