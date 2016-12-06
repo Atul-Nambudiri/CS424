@@ -30,7 +30,6 @@ void RobotSensors::updateValues() {
     bumpLeft = robot.bumpLeft();
     bumpRight = robot.bumpRight();   
     playButton = robot.playButton();
-
     pthread_mutex_unlock(stream_mutex);
     std::this_thread::sleep_for(std::chrono::milliseconds(15));
   }

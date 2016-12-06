@@ -13,7 +13,7 @@
 #include <opencv2/xfeatures2d.hpp>
 #include <vector>
 #include <math.h>
-#include <time.h>
+#include <ctime>
 #include <iostream>
 #include <pthread.h>
 #include <thread>
@@ -40,7 +40,8 @@ private:
     Point2f directionVector;
     std::vector<Point> waypoints;
     Point currWaypoint;
-    time_t prevWaypointTime;
+    clock_t prevWaypointTime;
+    clock_t rotationTime;
     static bool alignPerspective(vector<Point2f>& query, vector<Point2f>& scene,
         Mat& img_query, Mat& img_scene, vector<Point2f>& scene_corners);
     static bool identify(Mat& query_image, Mat& scene_image, string output_file_name);
@@ -50,9 +51,10 @@ private:
     static string type2str(int type);
 public: 
     RobotVision();
-    void updateDirectionVector(float rotationAngle = 90.f); 
+    void updateDirectionVector(int rotationSpeed = 70, int radius = 170, double angle = 0.0); 
     void addNewWaypoint(int robotSpeed);
     void drawContourMap();
+    void startRotating();
     static void identifyAndOutput();
     static void * runIdentify(void * args);
     static vector<QueryImage> query_images;
