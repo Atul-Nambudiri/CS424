@@ -1,0 +1,20 @@
+I created a new program. The source is in new_test.cc, and the output program in new_test. Running make will generate this.
+
+TODO - Fix/Integrate Cliff Drop Sensor, Fix Plotting, Test everything, create three plots, and then create the report
+
+Changes Made - Change movement pattern so that the robot moves in arcs - This fixes many issues, but plotting may be harder. 
+
+These following two functions occur in the correction loop:
+
+When the the robot senses it is close to the wall, it stops, turns counterclockwise a specific extra_angle, and then keeps moving in an arc
+
+If instead the rightBump sensor is triggered, the robot stops, moves back, turns counterclockwise the specific extra_angle * a multiplier, and then keeps moving in an arc. This is so that there is less of a chance of the robot hitting the wall again after the first bump
+
+In both of these cases, everytime the robot turns the extra angle, the extra angle is reduced by 5 degrees, with a minimum of 5 degrees. This is so that if these commands are triggered multiple times in a row, the effect is lessened each time.
+Everytime you go through the correction loop without triggering these function, the angle is incremented by 3,  back up to the original value for extra_angle
+
+If both the left and right bump sensors are triggered at the same time, the robot does a left turn. Note that this does not occur only when there is a left turn in the maze. Based on how the robot arcs, the robot could hit the middle of the wall head on, triggering a left turn. 
+This turn in the same as before, but it also turns the extra angle, so that the robot sticks out past parallel, so that it has some room to arc.
+
+
+

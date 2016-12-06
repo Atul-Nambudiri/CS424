@@ -1,7 +1,7 @@
 #include "RobotVision.hh"
 #include <algorithm>
 #include <dirent.h>
-#define CLOCKS_PER_MS  (CLOCKS_PER_SEC / 1000)
+
 using namespace cv;
 using namespace cv::xfeatures2d;
 
@@ -11,8 +11,6 @@ using std::cout;
 using std::endl;
 using std::string;
 using std::vector;
-using std::abs;
-using std::pow;
 
 vector<QueryImage> RobotVision::query_images;
 queue<Mat> RobotVision::image_queue;
@@ -25,48 +23,34 @@ RobotVision::RobotVision() {
     this->directionVector = Point2f(0.f,1.f);
     this->waypoints = std::vector<Point>();
     this->currWaypoint = Point(0,0);
-    this->prevWaypointTime = clock();
-    this->rotationTime = 0;
+    this->prevWaypointTime = time(NULL);
     this->waypoints.push_back(this->currWaypoint);      
 }   
 
-void RobotVision::updateDirectionVector(int rotationSpeed, int radius, double angle){
-    double rotationAngle = angle;
-    if(angle == 0){
-        this->rotationTime = (clock() - this->rotationTime)/(CLOCKS_PER_MS);
-        double rotationTime = (double) this->rotationTime/1000;
-        cout << rotationTime << endl;
-        rotationAngle = rotationSpeed * this->rotationTime / radius;
-        if(rotationSpeed == 70 && radius == 170)
-            rotationAngle += .4411785;
-        //cout << "Begin Update" << endl;
-    }
-    cout << "angle = " << rotationAngle << endl;
+void RobotVision::updateDirectionVector(float rotationAngle){
+    cout << "Begin Update" << endl;
+	float angleRadian = 3.14159265*rotationAngle/180;
     Point2f prevDirVector = this->directionVector;
-    this->directionVector.x = prevDirVector.x*cos(rotationAngle) - prevDirVector.y*sin(rotationAngle);
-    this->directionVector.y = prevDirVector.x*sin(rotationAngle) + prevDirVector.y*cos(rotationAngle);
-    //cout << "End Update" << endl;
+    this->directionVector.x = prevDirVector.x*cos(angleRadian) - prevDirVector.y*sin(angleRadian);
+    this->directionVector.y = prevDirVector.x*sin(angleRadian) + prevDirVector.y*cos(angleRadian);
+    cout << "End Update" << endl;
 }
-void RobotVision::startRotating(){
-    this->rotationTime = clock();    
-}
+
 void RobotVision::addNewWaypoint(int robotSpeed){
     cout << "Begin add waypoint" << endl;
-    clock_t now = clock();
-    auto timeDiff = (now - this->prevWaypointTime) / (CLOCKS_PER_MS);   
-    double travelTime = timeDiff/1000;
+    time_t now = time(NULL);
+    time_t travelTime = now - this->prevWaypointTime;   
     float distance = robotSpeed * (float) travelTime;
-    cout << distance << " " << travelTime << endl;
-	//cout << distance << endl;
+	cout << distance << endl;
     this->currWaypoint.x += distance*this->directionVector.x;
 	this->currWaypoint.y += distance*this->directionVector.y;
     this->waypoints.push_back(this->currWaypoint);
     this->prevWaypointTime = now;
-    //cout << "End add waypoint" << endl;
+    cout << "End add waypoint" << endl;
 }
 
 void RobotVision::drawContourMap(){
-    //cout << "Begin draw" << endl;
+    cout << "Begin draw" << endl;
     // Create a drawing context, and use white background.
     Mat img_output(1200, 1600, CV_8UC3, Scalar(255, 255, 255));
     // // Plot the waypoints using blue color.
@@ -78,29 +62,23 @@ void RobotVision::drawContourMap(){
     // // Draw the bounding rectangle using orange color
     auto bound = boundingRect(waypoints);
 	auto scale = min(1600.f/bound.width, 1200.f/bound.height); 	
-    auto lowestX = waypoints[0];
-    auto lowestY = waypoints[0];
-	for(auto && waypoint : waypoints){
-        if(waypoint.x < lowestX.x)
-            lowestX = waypoint;
-        if(waypoint.y < lowestY.y)
-            lowestY = waypoint;
-    }
-    for(auto && waypoint : waypoints){
-        waypoint.x += abs(lowestX.x);
-        waypoint.y += abs(lowestY.y);
-        waypoint*= scale;
-        std::cout << waypoint.x << "," << waypoint.y << std::endl;
+    
+	for(auto waypoint : waypoints){
+        waypoint.x *= scale*2;
+        waypoint.y *= scale*2;
+        if(waypoint.y < 0)
+            waypoint.y = -1 *waypoint.y;
     }
     bound = boundingRect(waypoints);
     for (int i = 0; i < waypoints.size()-1; i++) {
+        cout << waypoints[i].x << "," << waypoints[i].y << endl;
         line(img_output, waypoints[i], waypoints[i + 1], lineColor, lineWidth, CV_AA);
          circle(img_output, waypoints[i], radius, lineColor, CV_FILLED, CV_AA    );  
-     }
+    }
 	rectangle(img_output, bound, Scalar(0, 1200, 1600));
     // // Finally store it as a png file
     imwrite("irobot_plot.png", img_output);
-    //cout << "End draw" << endl;
+    cout << "End draw" << endl;
 }
                 
 
@@ -114,7 +92,7 @@ void * RobotVision::objectIdentification(void * args) {
   if(pDIR = opendir(dir.c_str())) {
       while(image = readdir(pDIR)) {
           if(strcmp(image->d_name, ".") != 0 && strcmp(image->d_name, "..") != 0) {
-              //cout << dir + "/" + image->d_name << endl;
+              cout << dir + "/" + image->d_name << endl;
               Mat image_mat = imread(dir + "/" + image->d_name, IMREAD_GRAYSCALE);
               if(strcmp(image->d_name, "magic-lamp-600.jpg") == 0) {
                 lamp = {
@@ -132,7 +110,7 @@ void * RobotVision::objectIdentification(void * args) {
   }
   try {
     raspicam::RaspiCam_Cv Camera;
-    cv::Mat rgb_image, bgr_image, bgr_image2;
+    cv::Mat rgb_image, bgr_image;
     if(!Camera.open()) {
       cerr << "Error opening camera" << endl;
       return NULL;
@@ -142,7 +120,6 @@ void * RobotVision::objectIdentification(void * args) {
     pthread_mutex_t * stream_mutex = info->stream_mutex;
     Create *robot = info->robot;
     int speed = info->speed;
-    short sleep_time = 3000;
     bool * turning = info->turning;
     bool * moving = info->moving;
     pthread_cond_t *cv = info->cv;
@@ -153,51 +130,33 @@ void * RobotVision::objectIdentification(void * args) {
     
     while(local_moving) {
       pthread_mutex_lock(stream_mutex);
-      cout << "RobotVision: locked" << endl;
+      cout << "locked" << endl;
       while (*turning) {
-        cout << "RobotVision: waiting for turn" << endl;
+        cout << "waiting for turn" << endl;
         pthread_cond_wait(cv, stream_mutex);
       }
-      cout << "RobotVision: done waiting for turn" << endl;
+      cout << "done waiting for turn" << endl;
 
       robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
       this_thread::sleep_for(chrono::milliseconds(400));
       Camera.grab();
-
       Camera.retrieve (bgr_image);
+      cout << "Retrieved Image" << endl;
 
-      Camera.grab();
-      Camera.retrieve(bgr_image2);
-
+      //@TODO: Make robot keep moving forward
+      while (*turning) {
+        pthread_cond_wait(cv, stream_mutex);
+      }
       robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);  
       pthread_mutex_unlock(stream_mutex);
 
-      cout << "RobotVision: Unlocking" << endl;
-      image_queue.push(bgr_image2);
-      num ++;
-      if(!lamp_found) {
-        if(identify(lamp.image, bgr_image, "")) {
-          //Stop the robot and disarm the lamp
-          pthread_mutex_lock(stream_mutex);
-          while (*turning) {
-            pthread_cond_wait(cv, stream_mutex);
-          }
-          robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);
-          robot->sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_FULL);
-          this_thread::sleep_for(chrono::milliseconds(2000));
-          robot->sendLedCommand (Create::LED_ADVANCE, Create::LED_COLOR_RED, Create::LED_INTENSITY_OFF);
-          robot->sendDriveCommand(speed, Create::DRIVE_STRAIGHT);
-          pthread_mutex_unlock(stream_mutex);
-          lamp_found = true;
-          sleep_time = 4500;
-        }
-      }
-      this_thread::sleep_for(chrono::milliseconds(sleep_time));
+      cout << "Unlocking" << endl;
+      image_queue.push(bgr_image);
+      this_thread::sleep_for(chrono::milliseconds(1000));
       pthread_mutex_lock(stream_mutex);
       local_moving = *moving;
       pthread_mutex_unlock(stream_mutex);
-      cout << "RobotVision: local_moving: " << local_moving << endl;
-      this_thread::sleep_for(chrono::milliseconds(50));
+      cout << "local_moving: " << local_moving << endl;
     }
     robot->sendDriveCommand(0, Create::DRIVE_STRAIGHT);  //In case we pressed the play button before we set the speed
     //We are finished with moving. Run the object Identification here.
@@ -217,16 +176,16 @@ void * RobotVision::objectIdentification(void * args) {
 void RobotVision::identifyAndOutput() {
   cout << "no seg " << endl;
   pthread_mutex_init(&identify_mutex, NULL);
-  pthread_t workers[6];
-  for(int i = 0; i < 6; i ++) {
+  pthread_t workers[4];
+  for(int i = 0; i < 4; i ++) {
     pthread_create(&workers[i], NULL, &RobotVision::runIdentify, NULL);
   }
-  for(int i = 0; i < 6; i ++) {
+  for(int i = 0; i < 4; i ++) {
     pthread_join(workers[i], NULL);
   }
   cout << "Done" << endl;
   ofstream myfile;
-  myfile.open("./found_images/found_images.txt", ofstream::out);
+  myfile.open("./found_images/found_images.txt", ofstream::out | ofstream::app);
   myfile << "Found " << to_string(found_objects_count) << " images\n" << endl;
   while(!objects_found.empty()) {
     myfile << "Found: " << objects_found.front() << "\n\n";
@@ -244,12 +203,15 @@ void * RobotVision::runIdentify(void * args) {
     int size = query_images.size();
     pthread_mutex_unlock(&identify_mutex);
     for(int i = 0; i < size; i ++) {
-      if(identify(query_images[i].image, scene_image, "./found_images/found_image_" + query_images[i].name + ".jpg")) {
+      pthread_mutex_lock(&identify_mutex);
+      int local_found_count = found_objects_count;
+      pthread_mutex_unlock(&identify_mutex);
+      if(identify(query_images[i].image, scene_image, "./found_images/found_image_" + to_string(++local_found_count) + ".jpg")) {
           pthread_mutex_lock(&identify_mutex);
           found_objects_count ++;
           objects_found.push(query_images[i].name);
-          //query_images.erase(query_images.begin()+i);
-          //size --;
+          query_images.erase(query_images.begin()+i);
+          size --;
           pthread_mutex_unlock(&identify_mutex);
       }
     }
